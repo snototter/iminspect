@@ -4,10 +4,12 @@
 Python Qt5 utils to easily visualize image data for faster development.
 """
 
-__all__ = ['imgview', 'inputs'] #['colormaps', 'imgview', 'imutils', 'inputs', 'inspector']
+__all__ = ['colormaps', 'imgview', 'inputs', 'inspector', 'utils']
 __version__ = '0.1'
 __author__ = 'snototter'
 
+from . import colormaps
 from . import imgview
 from . import inputs
-# from . import inspector
+from . import inspector
+from . import utils

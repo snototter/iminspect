@@ -15,6 +15,7 @@ CURSOR_MOVE = Qt.ClosedHandCursor
 class ImageCanvas(QWidget):
     zoomRequest = pyqtSignal(int)
     scrollRequest = pyqtSignal(int, int)
+    mouseMoved = pyqtSignal(QPoint, QPointF)
 
     def __init__(self, *args, **kwargs):
         super(type(self), self).__init__(*args, **kwargs)
@@ -44,8 +45,9 @@ class ImageCanvas(QWidget):
     # def focusOutEvent(self, event):
     #     self.restoreCursor()
 
-    # def mouseMoveEvent(self, event):
-        #pos = self.transformPos(event.pos())
+    def mouseMoveEvent(self, event):
+        pos = self.transformPos(event.pos())
+        self.mouseMoved.emit(event.pos(), pos)
 
     # def mousePressEvent(self, event):
     #     # pos = self.transformPos(event.pos())
@@ -137,18 +139,20 @@ class ImageCanvas(QWidget):
 
 
 class ImageViewer(QScrollArea):
+    mouseMoved = pyqtSignal(QPoint, QPointF)
+
     def __init__(self, parent=None):
         super(type(self), self).__init__(parent)
         self._prepareLayout()
         self._img_np = None
         self._img_scale = 1.0
         self._linked_viewers = list()
-        self.setMouseTracking(True)
         
     def _prepareLayout(self):
         self._canvas = ImageCanvas(self)
         self._canvas.zoomRequest.connect(self.zoom)
         self._canvas.scrollRequest.connect(self.scroll)
+        self._canvas.mouseMoved.connect(self.mouseMovedHandler)
 
         self.setWidget(self._canvas)
         self.setWidgetResizable(True)
@@ -157,6 +161,9 @@ class ImageViewer(QScrollArea):
         }
         self.verticalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Vertical))
         self.horizontalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Horizontal))
+
+    def mouseMovedHandler(self, widget_pos, pixmap_pos):
+        self.mouseMoved.emit(widget_pos, pixmap_pos)
 
     def sliderChanged(self, new_value, orientation):
         bar = self._scoll_bars[orientation]
@@ -179,16 +186,6 @@ class ImageViewer(QScrollArea):
         if notify_linked:
             for v in self._linked_viewers:
                 v.zoom(delta, notify_linked=False)
-
-    def move(self, delta, orientation, notify_linked=True):
-        """Connected to 'move'/'scroll' events by mouse movements. Thus, scale
-        the delta value accordingly and reuse the scrollbar/mouse wheel scroll
-        logic."""
-        bar = self._scoll_bars[orientation]
-        adjusted_delta = delta * 120 / bar.singleStep()
-        print(orientation, 'MOVE, mouse at', self._canvas.pixelAtGlobalPos(QCursor().pos()), ' ADJUSTED D:', adjusted_delta, ' vs ', delta)
-        self.scroll(adjusted_delta, orientation, notify_linked=notify_linked)
-        print('AFTER MOVE!!!! , mouse at', self._canvas.pixelAtGlobalPos(QCursor().pos()))
 
     def scroll(self, delta, orientation, notify_linked=True):
         """Slot for scrollRequest signal of image canvas."""
