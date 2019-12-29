@@ -365,7 +365,7 @@ class Inspector(QMainWindow):
         s += '</table>'
         return s
 
-    def _mouseMoved(self, widget_pos, image_pos):
+    def _mouseMoved(self, image_pos):
         """Invoked whenever the mouse position changed."""
         q = self._queryData(image_pos.x(), image_pos.y())
         if q is None:

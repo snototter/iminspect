@@ -15,7 +15,7 @@ CURSOR_MOVE = Qt.ClosedHandCursor
 class ImageCanvas(QWidget):
     zoomRequest = pyqtSignal(int)
     scrollRequest = pyqtSignal(int, int)
-    mouseMoved = pyqtSignal(QPoint, QPointF)
+    mouseMoved = pyqtSignal(QPointF)
 
     def __init__(self, *args, **kwargs):
         super(type(self), self).__init__(*args, **kwargs)
@@ -36,9 +36,15 @@ class ImageCanvas(QWidget):
         self._pixmap = pixmap
         self.repaint()
 
+    def pixmap(self):
+        return self._pixmap
+
     def mouseMoveEvent(self, event):
         pos = self.transformPos(event.pos())
-        self.mouseMoved.emit(event.pos(), pos)
+        # print(event.pos(), ' mouse at')
+        # print(event.pos()/self._scale)
+        # print(event.pos().x()/self._scale, event.pos().y()/self._scale)
+        self.mouseMoved.emit(pos)
 
     def paintEvent(self, event):
         if not self._pixmap:
@@ -64,7 +70,7 @@ class ImageCanvas(QWidget):
 
     def transformPos(self, point):
         """Convert from widget coordinates to painter coordinates."""
-        return point / self._scale - self.offsetToCenter()
+        return QPointF(point.x()/self._scale, point.y()/self._scale) - self.offsetToCenter()
 
     def pixelAtGlobalPos(self, pos):
         return self.transformPos(self.mapFromGlobal(pos))
@@ -91,6 +97,8 @@ class ImageCanvas(QWidget):
         dx, dy = delta.x(), delta.y()
         modifiers = event.modifiers()
         if modifiers & Qt.ControlModifier:
+            if modifiers & Qt.ShiftModifier:
+                dy *= 10
             if dy:
                 self.zoomRequest.emit(dy)
         else:
@@ -119,14 +127,15 @@ class ImageCanvas(QWidget):
 
 
 class ImageViewer(QScrollArea):
-    mouseMoved = pyqtSignal(QPoint, QPointF)
+    mouseMoved = pyqtSignal(QPointF)
 
     def __init__(self, parent=None):
         super(type(self), self).__init__(parent)
-        self._prepareLayout()
         self._img_np = None
         self._img_scale = 1.0
+        self._min_img_scale = None
         self._linked_viewers = list()
+        self._prepareLayout()
         
     def _prepareLayout(self):
         self._canvas = ImageCanvas(self)
@@ -142,8 +151,8 @@ class ImageViewer(QScrollArea):
         self.verticalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Vertical))
         self.horizontalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Horizontal))
 
-    def mouseMovedHandler(self, widget_pos, pixmap_pos):
-        self.mouseMoved.emit(widget_pos, pixmap_pos)
+    def mouseMovedHandler(self, pixmap_pos):
+        self.mouseMoved.emit(pixmap_pos)
 
     def sliderChanged(self, new_value, orientation):
         bar = self._scoll_bars[orientation]
@@ -183,19 +192,33 @@ class ImageViewer(QScrollArea):
         self._img_np = img.copy()
         self._canvas.loadPixmap(QPixmap.fromImage(qimage))
 
+        # Ensure that image has a minimum size of about 32x32 px
+        self._min_img_scale = min(32.0/img.shape[0], 32.0/img.shape[1])
+
         if self._img_np is None:
             self._canvas.setVisible(True)
             self._canvas.adjustSize()
         
         if adjust_size:
-            self._canvas.adjustSize()
-            self._img_scale = 1.0
+            # self._img_scale = 1.0
+            self._img_scale = self.scaleFitWindow()
         self.paintCanvas()
+
+    def scaleFitWindow(self):
+        """Scale the image such that it fills the canvas area."""
+        eps = 2.0 # Prevent scrollbars
+        w1 = self.width() - eps
+        h1 = self.height() - eps
+        a1 = w1 / h1
+        w2 = float(self._canvas.pixmap().width())
+        h2 = float(self._canvas.pixmap().height())
+        a2 = w2 / h2
+        return w1 / w2 if a2 >= a1 else h1 / h2
 
     def paintCanvas(self):
         if self._img_np is None:
             return
-        self._img_scale = max(0.001, self._img_scale)
+        self._img_scale = max(self._min_img_scale, self._img_scale)
         self._canvas.setScale(self._img_scale)
         self._canvas.adjustSize()
         self._canvas.update()
