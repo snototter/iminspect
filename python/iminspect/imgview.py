@@ -234,21 +234,21 @@ class ImageViewerDemoApplication(QMainWindow):
 
 
     def _prepareLayout(self):
+        import sys
+        sys.path.append('..')
+        from iminspect.inputs import VLine
         self._main_widget = QWidget()
         main_layout = QHBoxLayout()
 
         self._img_viewer_a = ImageViewer()
         main_layout.addWidget(self._img_viewer_a)
 
-        vline = QFrame()
-        vline.setFrameShape(QFrame.VLine)
-        vline.setFrameShadow(QFrame.Sunken)
-        main_layout.addWidget(vline)
+        main_layout.addWidget(VLine())
 
         self._img_viewer_b = ImageViewer()
         main_layout.addWidget(self._img_viewer_b)
 
-        main_layout.addWidget(vline)
+        main_layout.addWidget(VLine())
 
         self._img_viewer_c = ImageViewer()
         main_layout.addWidget(self._img_viewer_c)
