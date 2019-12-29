@@ -64,21 +64,19 @@ class ColorBar(QWidget):
         self._is_boolean = False
         self._categories = None
 
-    def set_boolean(self, b):
+    def setBoolean(self, b):
         # If the visualized data is boolean, set this to True!
         self._is_boolean = b
 
-    def set_categories(self, c):
+    def setCategories(self, c):
         # If the visualized data is categoric (i.e. a label image), set the unique categories!
         self._categories = c
 
-    def set_limits(self, limits):
+    def setLimits(self, limits):
         self._limits = limits
-        # self.update()
 
-    def set_colormap(self, colormap):
+    def setColormap(self, colormap):
         self._colormap = colormap
-        # self.update()
 
     def paintEvent(self, event):
         if self._colormap is None or \
@@ -170,8 +168,8 @@ class Inspector(QMainWindow):
         self._is_categoric = is_categoric   # Whether the data is categoric (a label image) or not
         self._visualized_data = None        # Currently visualized data (e.g. a single channel)
         self._visualized_pseudocolor = None # Currently visualized pseudocolorized data
-        self._reset_viewer = True
-        self.__prepare_layout()
+        self._reset_viewer = True           # Flag to reset (adjust size and translation) the image viewer
+        self._prepareLayout()
         self.show()
 
         print('##################################################\nData inspection:\n')
@@ -190,22 +188,21 @@ class Inspector(QMainWindow):
         if data.dtype == np.bool:
             self._data_limits = [float(v) for v in self._data_limits]
             self.__fmt_fx = fmtb
-            self._colorbar.set_boolean(True)
+            self._colorbar.setBoolean(True)
         elif is_categoric:
             self.__fmt_fx = fmti
             self._data_categories, ic = np.unique(data, return_inverse=True)
             self._data_inverse_categories = ic.reshape(data.shape)
-            self._colorbar.set_categories(self._data_categories)
+            self._colorbar.setCategories(self._data_categories)
             print('This is a categoric/label image with {:d} categories'.format(len(self._data_categories)))
         else:
             self.__fmt_fx = best_format_fx(self._data_limits)
 
         # Now we're ready to visualize the data
         self._updateDisplay()
-        #TODO nice-to-have: format pixel pos (fix %2d,3d,4d,... in tooltip and status bar)
 
 
-    def __prepare_layout(self):
+    def _prepareLayout(self):
         self._main_widget = QWidget()
         main_layout = QVBoxLayout()
 
@@ -298,17 +295,18 @@ class Inspector(QMainWindow):
                     limits = [np.min(self._visualized_data[:]), np.max(self._visualized_data[:])]
                     if self._data.dtype == np.bool:
                         limits = [float(v) for v in limits]
-                self._colorbar.set_limits(limits)
+                self._colorbar.setLimits(limits)
                 pc = colormaps.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
             self._visualized_pseudocolor = pc
             self._img_viewer.showImage(pc, adjust_size=self._reset_viewer)
-            self._colorbar.set_colormap(cm)
+            self._colorbar.setColormap(cm)
             self._colorbar.setVisible(True)
             self._colorbar.update()
         self._reset_viewer = False
 
 
     def _queryData(self, px_x, px_y):
+        """Retrieves the image data at location (px_x, px_y)."""
         x = int(px_x)
         y = int(px_y)
         if x < 0 or x >= self._data.shape[1] or y < 0 or y >= self._data.shape[0]:
@@ -328,7 +326,8 @@ class Inspector(QMainWindow):
                 if len(self._visualized_data.shape) == 2:
                     query['currlayer'] = self.__fmt_fx(self._visualized_data[y, x])
                 else:
-                    #TODO assert shape[2] == 1
+                    if self._visualized_data.shape[2] != 1:
+                        raise RuntimeError('Invalid number of channels')
                     query['currlayer'] = self.__fmt_fx(self._visualized_data[y, x, 0])
 
         if self._visualized_pseudocolor is None:
@@ -339,7 +338,10 @@ class Inspector(QMainWindow):
         return query
 
     def _statusBarMessage(self, query):
-        # Return a more descriptive message to be displayed upon the status bar
+        """Returns a message to be displayed upon the status bar showing
+        the data point at the cursor position. Requires result of _queryData as
+        input.
+        """
         s = query['pos'] + ', ' + ('Category' if self._is_categoric else 'Raw data')\
             + ': ' + query['rawstr']
         if query['currlayer'] is not None:
@@ -349,6 +351,10 @@ class Inspector(QMainWindow):
         return s
 
     def _tooltipMessage(self, query):
+        """Returns a HTML formatted tooltip message showing the
+        data point at the cursor position. Requires result of _queryData as
+        input.
+        """
         s = '<table><tr><td>Position:</td><td>' + query['pos'] + '</td></tr>'
         s += '<tr><td>' + ('Category' if self._is_categoric else 'Raw') + ':</td><td>'\
             + query['rawstr'] + '</td></tr>'
@@ -360,6 +366,7 @@ class Inspector(QMainWindow):
         return s
 
     def _mouseMoved(self, widget_pos, image_pos):
+        """Invoked whenever the mouse position changed."""
         q = self._queryData(image_pos.x(), image_pos.y())
         if q is None:
             return
@@ -382,10 +389,9 @@ def inspect(data, label='Data Inspection', flip_channels=False, is_categoric=Fal
         data = utils.flip_layers(data)
     app = QApplication([label])
     main_widget = Inspector(data, is_categoric)
-    # sys.exit(app.exec_())
-    #TODO is there a non-blocking way?
+    #TODO Maybe support a non-blocking inspection method if there is a way to update
+    # the UI while continuing the main computation thread...
     return app.exec_()
 
-    #TODO create object/application, replace image (reset viewer settings, etc.) if still active
 if __name__ == '__main__':
-    print('Please see the example application at <pvt_root>/pypvt3/examples/inspect_demo.py!')
+    print('Please see the example application at ../examples/inspect_demo.py!')
