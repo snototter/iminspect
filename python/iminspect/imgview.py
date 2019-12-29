@@ -72,8 +72,12 @@ class ImageCanvas(QWidget):
         """Convert from widget coordinates to painter coordinates."""
         return QPointF(point.x()/self._scale, point.y()/self._scale) - self.offsetToCenter()
 
-    def pixelAtGlobalPos(self, pos):
-        return self.transformPos(self.mapFromGlobal(pos))
+    def pixelAtWidgetPos(self, widget_pos):
+        return self.transformPos(widget_pos)
+
+    def pixelToWidgetPos(self, pixel_pos):
+        return (pixel_pos + self.offsetToCenter()) * self._scale
+        # return self.mapToGlobal(QPoint(int(widget_pos.x()), int(widget_pos.y())))
 
     def offsetToCenter(self):
         area = super(type(self), self).size()
@@ -169,12 +173,22 @@ class ImageViewer(QScrollArea):
             self._linked_viewers.extend(others)
 
     def zoom(self, delta, notify_linked=True):
-        # Potential improvement: fancier zooming, see https://github.com/tzutalin/labelImg/blob/731735f187ca23b02be685421d2730bea1b4cc52/labelImg.py
+        # Currently, we adjust the scroll bar position such that the cursor stays 
+        # at the same pixel. This works well if both scroll bars are visible, otherwise,
+        # only one axes is adjusted accordingly.
+        cursor_pos = QCursor().pos()
+        px_pos_prev = self._canvas.pixelAtWidgetPos(self._canvas.mapFromGlobal(cursor_pos))
         self._img_scale += 0.05 * delta / 120
         self.paintCanvas()
         if notify_linked:
+            # Zoom the linked viewers (if any)
             for v in self._linked_viewers:
                 v.zoom(delta, notify_linked=False)
+            # Adjust the scroll bar positions to keep cursor at the same pixel
+            px_pos_curr = self._canvas.pixelAtWidgetPos(self._canvas.mapFromGlobal(cursor_pos))
+            delta_widget = self._canvas.pixelToWidgetPos(px_pos_curr) - self._canvas.pixelToWidgetPos(px_pos_prev)
+            self.scroll(delta_widget.x()*120/self.horizontalScrollBar().singleStep(), Qt.Horizontal, notify_linked=False)
+            self.scroll(delta_widget.y()*120/self.verticalScrollBar().singleStep(), Qt.Vertical, notify_linked=False)
 
     def scroll(self, delta, orientation, notify_linked=True):
         """Slot for scrollRequest signal of image canvas."""
