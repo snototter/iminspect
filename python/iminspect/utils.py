@@ -3,6 +3,7 @@
 """Utilities you'll often need when working with images ;-)"""
 
 import numpy as np
+import io
 # import cv2
 from PIL import Image
 
