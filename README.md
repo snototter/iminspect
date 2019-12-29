@@ -7,9 +7,9 @@ Utils to quickly visualize image-like data to allow faster-paced development.
 ## Dependencies
 See `pip`-installable `<root>/python/requirements.txt`.
 In particular, we need:
-* PyQt5 - for the graphical user interface
-* qimage2ndarray - conversion between numpy and Qt QImage data types
-* numpy
+* `PyQt5` for the graphical user interface
+* `qimage2ndarray` to convert numpy ndarrays to Qt images
+* `numpy`, obviously
 
 ## Demo
 
@@ -28,7 +28,7 @@ inspect(np.random.rand(4096,4096))
 See also the provided demo application:
 ```bash
 cd <root>/python/examples
-python inspect_demo.py
+python3 inspect_demo.py
 ```
 
 Exemplary screenshot, visualizing categoric data (i.e. class labels):
@@ -47,9 +47,9 @@ Exemplary screenshot, visualizing categoric data (i.e. class labels):
 
 # TODO List
 To be done:
-* Explicit handling of flow (two layer flow/disparity ndarrays; default to flow wheel/disparity visualization)
-* Add load from disk functionality (?)
-* C++ port (leverage OpenCV UI 'capabilities' instead of qt)
-* include additional pvt3 functionality (e.g. ROI selection widget)
-* refactor (qt vs. custom naming schema)
+* [ ] Explicit handling of flow (two layer flow/disparity ndarrays; default to flow wheel/disparity visualization)
+* [ ] Add load from disk functionality (?)
+* [ ] C++ port (leverage OpenCV UI 'capabilities' instead of qt)
+* [ ] Include additional pvt3 functionality (e.g. ROI selection widget)
+* [ ] Refactor (qt vs. custom naming schema)
 
