@@ -36,37 +36,17 @@ class ImageCanvas(QWidget):
         self._pixmap = pixmap
         self.repaint()
 
-    # def enterEvent(self, event):
-    #     self.overrideCursor(self._cursor)
-
-    # def leaveEvent(self, event):
-    #     self.restoreCursor()
-
-    # def focusOutEvent(self, event):
-    #     self.restoreCursor()
-
     def mouseMoveEvent(self, event):
         pos = self.transformPos(event.pos())
         self.mouseMoved.emit(event.pos(), pos)
-
-    # def mousePressEvent(self, event):
-    #     # pos = self.transformPos(event.pos())
-    #     self._prev_mouse_pos = event.pos()
-    #     if Qt.RightButton & event.buttons():
-    #         self.overrideCursor(CURSOR_MOVE)
-
-    # def mouseReleaseEvent(self, event):
-    #     pos = self.transformPos(event.pos())
-    #     self._prev_mouse_pos = None
-    #     self.restoreCursor()
 
     def paintEvent(self, event):
         if not self._pixmap:
             return super(type(self), self).paintEvent(event)
         qp = self._painter
         qp.begin(self)
-        # qp.setRenderHint(QPainter.Antialiasing)
-        # qp.setRenderHint(QPainter.HighQualityAntialiasing)
+        qp.setRenderHint(QPainter.Antialiasing)
+        qp.setRenderHint(QPainter.HighQualityAntialiasing)
         # qp.setRenderHint(QPainter.SmoothPixmapTransform)
         qp.scale(self._scale, self._scale)
         # Adapted fast drawing from: 
