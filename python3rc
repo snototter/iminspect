@@ -21,4 +21,4 @@ if 'IMINSPECT_ROOT_DIR' in os.environ:
 else:
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from iminspect.inspector import inspect as inspect
+from iminspect.inspector import inspect
