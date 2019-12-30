@@ -11,9 +11,3 @@ __author__ = 'snototter'
 import os
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'version.py')) as vf:
     exec(vf.read())
-
-from . import colormaps
-from . import imgview
-from . import inputs
-from . import inspector
-

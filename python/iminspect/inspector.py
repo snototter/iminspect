@@ -1,33 +1,46 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Inspect matrix/image data""" 
+"""Inspect matrix/image data"""
 
-import os
-import sys
 import numpy as np
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
+from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
+    QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip
+from PyQt5.QtCore import QSize, QPoint
+from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor
 
 from . import colormaps as colormaps
 from . import imgview as imgview
 from . import inputs as inputs
 
+
 # Utils to format a data point (depending on the range)
 def fmtf(v):
     return '{:f}'.format(v)
+
+
 def fmt4f(v):
     return '{:.4f}'.format(v)
+
+
 def fmt3f(v):
     return '{:.3f}'.format(v)
+
+
 def fmt2f(v):
     return '{:.2f}'.format(v)
+
+
 def fmt1f(v):
     return '{:.1f}'.format(v)
+
+
 def fmti(v):
     return '{:d}'.format(int(v))
+
+
 def fmtb(v):
     return 'True' if v else 'False'
+
 
 def best_format_fx(limits):
     # Check range of data to select proper label formating
@@ -49,7 +62,7 @@ def best_format_fx(limits):
 class ColorBar(QWidget):
     """Draws a vertical color bar."""
     def __init__(self):
-        super(type(self), self).__init__()
+        super(ColorBar, self).__init__()
         self._bar_width = 30
         self._bar_padding = 5
         self._min_height = 80
@@ -79,7 +92,7 @@ class ColorBar(QWidget):
 
     def paintEvent(self, event):
         if self._colormap is None or \
-            (not self._is_boolean and self._categories is None and self._limits is None):
+               (not self._is_boolean and self._categories is None and self._limits is None):
             return
         size = self.size()
         qp = QPainter()
@@ -93,17 +106,20 @@ class ColorBar(QWidget):
             qp.fillRect(self._bar_padding, 0, self._bar_width, np.ceil(size.height()/2), brush)
             rgb = self._colormap[0]
             brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
-            qp.fillRect(self._bar_padding, np.floor(size.height()/2), self._bar_width, np.ceil(size.height()/2), brush)
+            qp.fillRect(self._bar_padding, np.floor(size.height()/2),
+                        self._bar_width, np.ceil(size.height()/2), brush)
             # Draw labels
-            qp.drawText(QPoint(2*self._bar_padding + self._bar_width,int(size.height()*0.25)), 'True')
-            qp.drawText(QPoint(2*self._bar_padding + self._bar_width,int(size.height()*0.75)), 'False')
+            qp.drawText(QPoint(2*self._bar_padding + self._bar_width, int(size.height()*0.25)),
+                        'True')
+            qp.drawText(QPoint(2*self._bar_padding + self._bar_width, int(size.height()*0.75)),
+                        'False')
         elif self._categories is not None:
             # For label images, we don't need the full colormap gradient, but only
             # one block for each class/label/category.
 
             # Compute height of each colored block.
             num_categories = len(self._categories)
-            step_height = size.height() /float(num_categories)
+            step_height = size.height() / float(num_categories)
             cm_indices = np.linspace(0, 255, num_categories).astype(np.uint8)
             # Draw the category colors from top to bottom (largest ID/category/label first).
             top = 0.0
@@ -134,13 +150,14 @@ class ColorBar(QWidget):
         else:
             # Draw color gradients
             num_gradient_steps = min(size.height(), 256)
-            step_height = size.height() /float(num_gradient_steps)
+            step_height = size.height() / float(num_gradient_steps)
             cm_indices = np.linspace(0, 255, num_gradient_steps).astype(np.uint8)
             top = 0.0
             for i in range(num_gradient_steps):
                 rgb = self._colormap[cm_indices[num_gradient_steps-1-i]]
                 brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
-                qp.fillRect(self._bar_padding, np.floor(top), self._bar_width, np.ceil(step_height), brush)
+                qp.fillRect(self._bar_padding, np.floor(top),
+                            self._bar_width, np.ceil(step_height), brush)
                 top += step_height
             # Draw labels
             fmt = best_format_fx(self._limits)
@@ -148,29 +165,30 @@ class ColorBar(QWidget):
             num_labels = min(self._num_labels, int(size.height() / height_per_label))
             labels = np.linspace(self._limits[0], self._limits[1], num_labels)
             for i in range(num_labels):
-                pos = QPoint(2*self._bar_padding + self._bar_width, 
-                    int(size.height() - i * (size.height()-self._font_size)/(num_labels-1)))
+                pos = QPoint(2*self._bar_padding + self._bar_width,
+                             int(size.height() - i * (size.height()-self._font_size)/(num_labels-1)))
                 qp.drawText(pos, fmt(labels[i]))
         # We're done painting
         qp.end()
+
 
 class Inspector(QMainWindow):
     """Opens GUI to inspect the given data"""
 
     # Identifiers for visualization drop down
     VIS_RAW = -1
-    VIS_GRAY = -2    
-    VIS_COLORMAPS = ['autumn', 'bone', 'cold', 'disparity', 
-        'earth', 'hot', 'hsv', 'inferno', 'jet', 'magma', 'parula', 
+    VIS_GRAY = -2
+    VIS_COLORMAPS = ['autumn', 'bone', 'cold', 'disparity',
+        'earth', 'hot', 'hsv', 'inferno', 'jet', 'magma', 'parula',
         'pastel', 'plasma', 'sepia', 'temperature', 'thermal', 'viridis']
 
     def __init__(self, data, is_categoric, display_settings=None):
-        super(type(self), self).__init__()
-        self._data = data                   # The raw data
-        self._is_categoric = is_categoric   # Whether the data is categoric (a label image) or not
-        self._visualized_data = None        # Currently visualized data (e.g. a single channel)
-        self._visualized_pseudocolor = None # Currently visualized pseudocolorized data
-        self._reset_viewer = True           # Flag to reset (adjust size and translation) the image viewer
+        super(Inspector, self).__init__()
+        self._data = data                    # The raw data
+        self._is_categoric = is_categoric    # Whether the data is categoric (a label image) or not
+        self._visualized_data = None         # Currently visualized data (e.g. a single channel)
+        self._visualized_pseudocolor = None  # Currently visualized pseudocolorized data
+        self._reset_viewer = True            # Flag to reset (adjust size and translation) the image viewer
 
         # Set up GUI
         self._prepareLayout()
@@ -183,7 +201,7 @@ class Inspector(QMainWindow):
         self.restoreDisplaySettings(display_settings)
 
     def _queryStatistics(self):
-        """Analyzes the internal _data field (range, data type, channels, 
+        """Analyzes the internal _data field (range, data type, channels,
         etc.) and sets member variables accordingly.
         Additionally, information will be printed to stdout and shown on
         the GUI.
@@ -232,10 +250,10 @@ class Inspector(QMainWindow):
 
             if not self._is_single_channel:
                 for c in range(self._data.shape[2]):
-                    cmin = np.min(self._data[:,:,c])
-                    cmax = np.max(self._data[:,:,c])
-                    cmean = np.mean(self._data[:,:,c])
-                    cstd = np.std(self._data[:,:,c])
+                    cmin = np.min(self._data[:, :, c])
+                    cmax = np.max(self._data[:, :, c])
+                    cmean = np.mean(self._data[:, :, c])
+                    cstd = np.std(self._data[:, :, c])
                     #
                     stdout_str.append('Minimum on channel {}: {}'.format(c, cmin))
                     stdout_str.append('Maximum on channel {}: {}'.format(c, cmax))
@@ -293,7 +311,9 @@ class Inspector(QMainWindow):
             input_layout.addWidget(self._layer_dropdown)
 
         if not self._is_single_channel and not self._is_categoric:
-            self._checkbox_global_limits = inputs.CheckBoxWidget('Use same visualization limits for all channels:', checkbox_left=False, is_checked=True)
+            self._checkbox_global_limits = inputs.CheckBoxWidget(
+                'Use same visualization limits for all channels:',
+                checkbox_left=False, is_checked=True)
             input_layout.addWidget(self._checkbox_global_limits)
             self._checkbox_global_limits.value_changed.connect(self._updateDisplay)
         else:
@@ -302,10 +322,11 @@ class Inspector(QMainWindow):
         # Let user select the visualization method
         vis_options = [(type(self).VIS_RAW, 'Raw data'), (type(self).VIS_GRAY, 'Grayscale')] + \
             [(i, 'Pseudocolor {:s}'.format(
-                'HSV' if type(self).VIS_COLORMAPS[i] == 'hsv' else type(self).VIS_COLORMAPS[i].capitalize()))
+                'HSV' if type(self).VIS_COLORMAPS[i] == 'hsv'
+                else type(self).VIS_COLORMAPS[i].capitalize()))
                 for i in range(len(type(self).VIS_COLORMAPS))]
         self._visualization_dropdown = inputs.DropDownSelectionWidget('Visualization:', vis_options,
-            initial_selected_index = 0 if not self._is_single_channel else len(type(self).VIS_COLORMAPS)-1+2)
+            initial_selected_index=0 if not self._is_single_channel else len(type(self).VIS_COLORMAPS) - 1 + 2)
         self._visualization_dropdown.value_changed.connect(self._updateDisplay)
         input_layout.addWidget(self._visualization_dropdown)
 
@@ -318,14 +339,13 @@ class Inspector(QMainWindow):
         self._data_label = QLabel()
         self._data_label.setFrameShape(QFrame.Panel)
         self._data_label.setFrameShadow(QFrame.Sunken)
-        #TODO reorganize layout (e.g. data_label next to input fields)
 
-        # Image viewer and colorbar        
+        # Image viewer and colorbar
         img_layout = QHBoxLayout()
         self._img_viewer = imgview.ImageViewer()
         self._img_viewer.mouseMoved.connect(self._mouseMoved)
         img_layout.addWidget(self._img_viewer)
-        
+
         self._colorbar = ColorBar()
         img_layout.addWidget(self._colorbar)
 
@@ -347,9 +367,8 @@ class Inspector(QMainWindow):
         self.setCentralWidget(self._main_widget)
         self.resize(QSize(1280, 720))
 
-
     def _updateDisplay(self, *args):
-        #TODO if raw ensure that num channels == 1 or 3, otherwise show dummy image/error message
+        # TODO if raw ensure that num channels == 1 or 3, otherwise show dummy image/error message
         # Select which layer to show:
         if self._is_single_channel:
             self._visualized_data = self._data
@@ -360,7 +379,7 @@ class Inspector(QMainWindow):
                 self._visualized_data = self._data
                 is_single_channel = False
             else:
-                self._visualized_data = self._data[:,:,layer_selection]
+                self._visualized_data = self._data[:, :, layer_selection]
                 is_single_channel = True
 
         # Reset pseudocolor if visualization input is multi-channel
@@ -380,12 +399,15 @@ class Inspector(QMainWindow):
             if vis_selection == type(self).VIS_GRAY:
                 cm = colormaps.colormap_gray
             else:
-                cm = getattr(colormaps, 'colormap_{:s}_rgb'.format(type(self).VIS_COLORMAPS[vis_selection]))
+                cm = getattr(colormaps, 'colormap_{:s}_rgb'.format(
+                    type(self).VIS_COLORMAPS[vis_selection]))
 
             if self._is_categoric:
-                pc = colormaps.pseudocolor(self._data_inverse_categories, color_map=cm, limits=[0, len(self._data_categories)-1])
+                pc = colormaps.pseudocolor(self._data_inverse_categories,
+                    color_map=cm, limits=[0, len(self._data_categories)-1])
             else:
-                if self._checkbox_global_limits is not None and self._checkbox_global_limits.get_input():
+                if self._checkbox_global_limits is not None \
+                        and self._checkbox_global_limits.get_input():
                     limits = self._data_limits
                 else:
                     limits = [np.min(self._visualized_data[:]), np.max(self._visualized_data[:])]
@@ -400,7 +422,6 @@ class Inspector(QMainWindow):
             self._colorbar.update()
         self._reset_viewer = False
 
-
     def _queryData(self, px_x, px_y):
         """Retrieves the image data at location (px_x, px_y)."""
         x = int(px_x)
@@ -413,9 +434,10 @@ class Inspector(QMainWindow):
         # Representation of raw data
         query['currlayer'] = None
         if self._is_single_channel:
-            query['rawstr'] = self.__fmt_fx(self._data[y,x])
+            query['rawstr'] = self.__fmt_fx(self._data[y, x])
         else:
-            query['rawstr'] = '[' + ', '.join([self.__fmt_fx(self._data[y,x,c]) \
+            query['rawstr'] = '[' + ', '.join([self.__fmt_fx(
+                self._data[y, x, c])
                 for c in range(self._data.shape[2])]) + ']'
             # Representation of currently visualized data (if different from raw)
             if self._layer_dropdown.get_input()[0] >= 0:
@@ -429,8 +451,10 @@ class Inspector(QMainWindow):
         if self._visualized_pseudocolor is None:
             query['pseudocol'] = None
         else:
-            query['pseudocol'] = '[' + ', '.join(['{:d}'.format(self._visualized_pseudocolor[y,x,c]) \
-                for c in range(self._visualized_pseudocolor.shape[2])]) + ']'
+            query['pseudocol'] = '[' + ', '.join(
+                ['{:d}'.format(self._visualized_pseudocolor[y, x, c])
+                    for c in range(self._visualized_pseudocolor.shape[2])]) \
+                    + ']'
         return query
 
     def _statusBarMessage(self, query):
@@ -481,25 +505,27 @@ def flipLayers(nparray):
     if len(nparray.shape) == 3:
         if nparray.shape[2] == 4:
             # We got xyzA, make zyxA
-            return nparray[...,[2,1,0,3]]
+            return nparray[..., [2, 1, 0, 3]]
         else:
-            return nparray[:,:,::-1]
+            return nparray[:, :, ::-1]
     return nparray
 
 
-def inspect(data, label='Data Inspection', flip_channels=False, is_categoric=False, display_settings=None):
+def inspect(
+        data, label='Data Inspection', flip_channels=False,
+        is_categoric=False, display_settings=None):
     """Opens a GUI to visualize the given image data.
-    
+
     data:          numpy ndarray to be visualized.
     label:         window title.
     flip_channels: this qt window works with RGB images, so flip_channels must
                    be set True if your data is BGR.
-    is_categoric:  I don't know a generic and elegant way of determining 
+    is_categoric:  I don't know a generic and elegant way of determining
                    whether the input is categoric (i.e. a label image) or if
-                   you really wanted to display some integer data (e.g. 
+                   you really wanted to display some integer data (e.g.
                    disparities). Thus, set this flag if you want to display a
                    label image.
-    display_settings: a dictionary of display settings in case you want to 
+    display_settings: a dictionary of display settings in case you want to
                    restore the previous settings. The current settings are
                    returned by this function.
 
@@ -511,7 +537,7 @@ def inspect(data, label='Data Inspection', flip_channels=False, is_categoric=Fal
     app = QApplication([label])
     main_widget = Inspector(data, is_categoric, display_settings)
     rc = app.exec_()
-    # Query the viewer settings (in case the user wants to restore them for the 
+    # Query the viewer settings (in case the user wants to restore them for the
     # next image)
     display_settings = main_widget.currentDisplaySettings()
     return rc, display_settings

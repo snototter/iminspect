@@ -2,12 +2,14 @@
 # coding=utf-8
 """
 A Qt-based image viewer which supports zooming and scrolling.
-""" 
+"""
 
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
+from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QScrollArea,\
+    QHBoxLayout
+from PyQt5.QtCore import pyqtSignal, Qt, QSize, QPointF
+from PyQt5.QtGui import QPainter, QPixmap, QCursor
 import qimage2ndarray
+
 
 class ImageCanvas(QWidget):
     """Widget to display an image."""
@@ -17,7 +19,7 @@ class ImageCanvas(QWidget):
     mouseMoved = pyqtSignal(QPointF)
 
     def __init__(self, *args, **kwargs):
-        super(type(self), self).__init__(*args, **kwargs)
+        super(ImageCanvas, self).__init__(*args, **kwargs)
         self._scale = 1.0
         self._pixmap = QPixmap()
         self._painter = QPainter()
@@ -41,14 +43,14 @@ class ImageCanvas(QWidget):
 
     def paintEvent(self, event):
         if not self._pixmap:
-            return super(type(self), self).paintEvent(event)
+            return super(ImageCanvas, self).paintEvent(event)
         qp = self._painter
         qp.begin(self)
         qp.setRenderHint(QPainter.Antialiasing)
         qp.setRenderHint(QPainter.HighQualityAntialiasing)
         # qp.setRenderHint(QPainter.SmoothPixmapTransform)
         qp.scale(self._scale, self._scale)
-        # Adapted fast drawing from: 
+        # Adapted fast drawing from:
         # https://www.qt.io/blog/2006/05/13/fast-transformed-pixmapimage-drawing
         # If the painter has an invertible world transformation matrix, we use
         # it to get the visible rectangle (saves a lot of drawing resources).
@@ -75,7 +77,7 @@ class ImageCanvas(QWidget):
         return (pixel_pos + self.offsetToCenter()) * self._scale
 
     def offsetToCenter(self):
-        area = super(type(self), self).size()
+        area = super(ImageCanvas, self).size()
         aw, ah = area.width(), area.height()
         w = self._pixmap.width() * self._scale
         h = self._pixmap.height() * self._scale
@@ -89,7 +91,7 @@ class ImageCanvas(QWidget):
     def minimumSizeHint(self):
         if self._pixmap:
             return self._scale * self._pixmap.size()
-        return super(type(self), self).minimumSizeHint()
+        return super(ImageCanvas, self).minimumSizeHint()
 
     def wheelEvent(self, event):
         delta = event.angleDelta()
@@ -113,13 +115,13 @@ class ImageViewer(QScrollArea):
     mouseMoved = pyqtSignal(QPointF)
 
     def __init__(self, parent=None):
-        super(type(self), self).__init__(parent)
+        super(ImageViewer, self).__init__(parent)
         self._img_np = None
         self._img_scale = 1.0
         self._min_img_scale = None
         self._linked_viewers = list()
         self._prepareLayout()
-        
+
     def _prepareLayout(self):
         self._canvas = ImageCanvas(self)
         self._canvas.zoomRequest.connect(self.zoom)
@@ -128,12 +130,12 @@ class ImageViewer(QScrollArea):
 
         self.setWidget(self._canvas)
         self.setWidgetResizable(True)
-        self._scoll_bars = { Qt.Vertical: self.verticalScrollBar(),
+        self._scoll_bars = {
+            Qt.Vertical: self.verticalScrollBar(),
             Qt.Horizontal: self.horizontalScrollBar()
         }
         self.verticalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Vertical))
         self.horizontalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Horizontal))
-
 
     def currentDisplaySettings(self):
         """Query the current zoom/scroll settings, so you can restore them.
@@ -150,7 +152,7 @@ class ImageViewer(QScrollArea):
         self._img_scale = settings['zoom']
         self.paintCanvas()
         # Potential issue: scrollbars may only appear during repainting the
-        # widget. Then, setting their value won't work. Best and least 
+        # widget. Then, setting their value won't work. Best and least
         # complicated way I found so far: force Qt to process the event loop
         # after adjusting the bar's range (and before setting the new value).
         for orientation in [Qt.Horizontal, Qt.Vertical]:
@@ -159,7 +161,7 @@ class ImageViewer(QScrollArea):
             if bval != 0:
                 bar.setMinimum(bmin)
                 bar.setMaximum(bmax)
-                qApp.processEvents()
+                QApplication.instance().processEvents()
                 bar.setValue(bval)
 
     def currentImageScale(self):
@@ -184,7 +186,7 @@ class ImageViewer(QScrollArea):
             self._linked_viewers.extend(others)
 
     def zoom(self, delta, notify_linked=True):
-        # Currently, we adjust the scroll bar position such that the cursor stays 
+        # Currently, we adjust the scroll bar position such that the cursor stays
         # at the same pixel. This works well if both scroll bars are visible, otherwise,
         # only one axes is adjusted accordingly.
         cursor_pos = QCursor().pos()
@@ -198,8 +200,8 @@ class ImageViewer(QScrollArea):
             # Adjust the scroll bar positions to keep cursor at the same pixel
             px_pos_curr = self._canvas.pixelAtWidgetPos(self._canvas.mapFromGlobal(cursor_pos))
             delta_widget = self._canvas.pixelToWidgetPos(px_pos_curr) - self._canvas.pixelToWidgetPos(px_pos_prev)
-            self.scroll(delta_widget.x()*120/self.horizontalScrollBar().singleStep(), Qt.Horizontal, notify_linked=False)
-            self.scroll(delta_widget.y()*120/self.verticalScrollBar().singleStep(), Qt.Vertical, notify_linked=False)
+            self.scroll(delta_widget.x()*120/self.horizontalScrollBar().singleStep(), Qt.Horizontal, notify_linked=True)
+            self.scroll(delta_widget.y()*120/self.verticalScrollBar().singleStep(), Qt.Vertical, notify_linked=True)
 
     def scroll(self, delta, orientation, notify_linked=True):
         """Slot for scrollRequest signal of image canvas."""
@@ -223,7 +225,7 @@ class ImageViewer(QScrollArea):
         if self._img_np is None:
             self._canvas.setVisible(True)
             self._canvas.adjustSize()
-        
+
         if adjust_size:
             # self._img_scale = 1.0
             self.scaleToFitWindow()
@@ -233,7 +235,7 @@ class ImageViewer(QScrollArea):
         """Scale the image such that it fills the canvas area."""
         if self._img_np is None:
             return
-        eps = 2.0 # Prevent scrollbars
+        eps = 2.0  # Prevent scrollbars
         w1 = self.width() - eps
         h1 = self.height() - eps
         a1 = w1 / h1
@@ -252,15 +254,12 @@ class ImageViewer(QScrollArea):
         self._canvas.update()
 
 
-
 class ImageViewerDemoApplication(QMainWindow):
-    """Demo GUI showing three linked image 
+    """Demo GUI showing three linked image
     viewers next to each other."""
-    def __init__(self, img_np):
-        super(type(self), self).__init__()
+    def __init__(self):
+        super(ImageViewerDemoApplication, self).__init__()
         self._prepareLayout()
-        self.show()
-        self.showImage(img_np)
 
     def _prepareLayout(self):
         import sys
@@ -300,12 +299,16 @@ def run_demo():
     app = QApplication(['Linked ImageViewer Demo'])
     import numpy as np
     from PIL import Image
-    import os, sys
-    img_np = image = np.asarray(Image.open(\
-        os.path.join(os.path.dirname(\
+    import os
+    import sys
+    img_np = np.asarray(Image.open(
+        os.path.join(os.path.dirname(
             os.path.abspath(__file__)), '../examples/lena.jpg')).convert('RGB'))
-    main_widget = ImageViewerDemoApplication(img_np)
+    main_window = ImageViewerDemoApplication()
+    main_window.show()
+    main_window.showImage(img_np)
     sys.exit(app.exec_())
+
 
 if __name__ == '__main__':
     run_demo()

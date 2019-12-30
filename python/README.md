@@ -31,5 +31,10 @@ inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), is_categoric=True)
 ## Changelog
 * `0.1.1`
   * TBD - support ROI selection in ImageCanvas
+  * Refactoring:
+    * Clean up imports
+    * Make pylint/flake8 happier
+  * Fixes:
+    * Adjust scrollbars when zooming multiple linked ImageCanvas
 * `0.1.0` - Initial public release
 
