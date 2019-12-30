@@ -10,10 +10,6 @@ python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 * Test installation
 pip install --index-url https://test.pypi.org/simple/ --no-deps iminspect-snototter
 
-TODO list
-* Add data stats to GUI
-* Upload to pypi
-* display settings (scroll bar not correctly restored????)
 """
 import setuptools
 
