@@ -433,11 +433,11 @@ class RoiSelectWidget(InputWidget):
 
             # Show modal dialog
             # FIXME adjust import to changed file structure!
-            from . import imgview
-            dlg = imgview.RectSelectionDialog(self)
-            dlg.rect_selected.connect(self.__rect_selected)
-            dlg.show_image(img_np)
-            dlg.set_rectangle(self.get_input())
+            from imgview import RectSelectionDialog
+            dlg = RectSelectionDialog(self)
+            dlg.rectSelected.connect(self.__rect_selected)
+            dlg.showImage(img_np)
+            dlg.setRectangle(self.get_input())
             dlg.exec()
 
 
