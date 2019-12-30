@@ -28,3 +28,8 @@ inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), is_categoric=True)
   * `Wheel` up/down
   * Additionally holding `Shift` speeds up scrolling
 
+## Changelog
+* `0.1.1`
+  * TBD - support ROI selection in ImageCanvas
+* `0.1.0` - Initial public release
+
