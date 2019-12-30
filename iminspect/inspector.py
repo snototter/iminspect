@@ -4,9 +4,11 @@
 
 import numpy as np
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
-    QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip
-from PyQt5.QtCore import QSize, QPoint
-from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor
+    QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
+    QShortcut
+from PyQt5.QtCore import QSize, QPoint, pyqtSlot
+from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
+    QKeySequence
 
 from . import colormaps as colormaps
 from . import imgview as imgview
@@ -192,7 +194,7 @@ class Inspector(QMainWindow):
 
         # Set up GUI
         self._prepareLayout()
-        self.show()
+        self._prepareActions()
         # Analyze the given data (range, data type, channels, etc.)
         self._queryStatistics()
         # Now we're ready to visualize the data
@@ -367,6 +369,15 @@ class Inspector(QMainWindow):
         self.setCentralWidget(self._main_widget)
         self.resize(QSize(1280, 720))
 
+    def _prepareActions(self):
+        # TODO WIP: Open image from disk
+        self._shortcut_open = QShortcut(QKeySequence('Ctrl+O'), self)
+        self._shortcut_open.activated.connect(self._onOpen)
+        # Close window
+        self._shortcut_exit = QShortcut(QKeySequence('Ctrl+Q'), self)
+        self._shortcut_exit.activated.connect(QApplication.instance().quit)
+
+
     def _updateDisplay(self, *args):
         # TODO if raw ensure that num channels == 1 or 3, otherwise show dummy image/error message
         # Select which layer to show:
@@ -496,6 +507,10 @@ class Inspector(QMainWindow):
         self._status_bar.showMessage(self._statusBarMessage(q))
         QToolTip.showText(QCursor().pos(), self._tooltipMessage(q))
 
+    @pyqtSlot()
+    def _onOpen(self):
+        print('Open image!!')
+
 
 def flipLayers(nparray):
     """
@@ -536,6 +551,7 @@ def inspect(
         data = flipLayers(data)
     app = QApplication([label])
     main_widget = Inspector(data, is_categoric, display_settings)
+    main_widget.show()
     rc = app.exec_()
     # Query the viewer settings (in case the user wants to restore them for the
     # next image)

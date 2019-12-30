@@ -32,12 +32,10 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
   * Additionally holding `Shift` speeds up scrolling
 
 ## Changelog
-* Upcoming
-  * TBD - Support flow visualization (2-layer flow/disparity data; default colormap to color wheel/disparity)
-  * TBD - Add load from disk functionality (?)
 * `0.1.2`
   * Added tests for non-GUI functionality
   * Integrate github runners for test/build/deploy
+  * Fix definition for colormap gray
 * `0.1.1`
   * Additional features:
     * ImageCanvas supports ROI selection (useful for custom input widgets)
@@ -48,3 +46,7 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
     * Adjust scrollbars when zooming multiple linked ImageCanvas
 * `0.1.0` - Initial public release
 
+## Upcoming Changes
+* [ ] Support flow visualization<br/>2-layer flow, default to color wheel representation, port C++/MATLAB https://people.csail.mit.edu/celiu/OpticalFlow/
+* [ ] Add load from disk functionality
+* [ ] Support keyboard shortcuts for zooming/scrolling, scaleToFit
