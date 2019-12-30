@@ -1,20 +1,50 @@
+"""
+Package creation script
+
+* Build package
+pip install --upgrade setuptools wheel
+python setup.py sdist bdist_wheel
+* Upload to TestPyPI
+pip install --upgrade twine
+python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+* Test installation
+pip install --index-url https://test.pypi.org/simple/ --no-deps iminspect-snototter
+
+TODO list
+* Check why LICENSE is not included
+* Check Zooming (unlock mouse wheel lock) - replace increment by factor
+* Add data stas to GUI
+X Refactor code (remove utils and PIL dependency)
+* Refactor documentation
+* Upload to pypi
+"""
 import setuptools
 
+# Load description
 with open('README.md', 'r') as fr:
     long_description = fr.read()
 
+# Load version string
+loaded_vars = dict()
+with open('iminspect/version.py') as fv:
+    exec(fv.read(), loaded_vars)
+
 setuptools.setup(
-    name="iminspect",
-    version="0.1.0",
+    name="iminspect-snototter",
+    version=loaded_vars['__version__'],
     author="snototter",
-#    author_email="TBD",
-    description="Qt-based GUI to visualize image-like data for faster python prototyping.",
+    author_email="muspellr@gmail.com",
+    description="Qt-based GUI to visualize image-like data.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/snototter/iminspect",
     packages=setuptools.find_packages(),
-    install_requires=['numpy', 'Pillow', 'PyQt5', 'qimage2ndarray'],
-    license='MIT',
+    install_requires=[
+        'numpy', 
+        'Pillow', 
+        'PyQt5', 
+        'qimage2ndarray'],
+ #   license='MIT',
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

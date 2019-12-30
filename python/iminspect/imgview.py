@@ -1,31 +1,27 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Image viewer inside a scroll- and drag-able area""" 
+"""
+A Qt-based image viewer which supports zooming and scrolling.
+""" 
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import qimage2ndarray
-import threading
-
-CURSOR_DEFAULT = Qt.ArrowCursor
-CURSOR_POINTING = Qt.PointingHandCursor
-CURSOR_MOVE = Qt.ClosedHandCursor
 
 class ImageCanvas(QWidget):
+    """Widget to display an image."""
+
     zoomRequest = pyqtSignal(int)
     scrollRequest = pyqtSignal(int, int)
     mouseMoved = pyqtSignal(QPointF)
 
     def __init__(self, *args, **kwargs):
         super(type(self), self).__init__(*args, **kwargs)
-        self._pixmap = QPixmap()
-        self._cursor = CURSOR_DEFAULT
         self._scale = 1.0
+        self._pixmap = QPixmap()
         self._painter = QPainter()
-        self._prev_mouse_pos = None
         self.setMouseTracking(True)
-        self.setFocusPolicy(Qt.WheelFocus)
 
     def setScale(self, scale):
         self._scale = scale
@@ -41,9 +37,6 @@ class ImageCanvas(QWidget):
 
     def mouseMoveEvent(self, event):
         pos = self.transformPos(event.pos())
-        # print(event.pos(), ' mouse at')
-        # print(event.pos()/self._scale)
-        # print(event.pos().x()/self._scale, event.pos().y()/self._scale)
         self.mouseMoved.emit(pos)
 
     def paintEvent(self, event):
@@ -57,11 +50,12 @@ class ImageCanvas(QWidget):
         qp.scale(self._scale, self._scale)
         # Adapted fast drawing from: 
         # https://www.qt.io/blog/2006/05/13/fast-transformed-pixmapimage-drawing
+        # If the painter has an invertible world transformation matrix, we use
+        # it to get the visible rectangle (saves a lot of drawing resources).
         inv_wt, valid = qp.worldTransform().inverted()
         if valid:
-            exposed = inv_wt.mapRect(event.rect()).adjusted(-1, -1, 1, 1)
             qp.translate(self.offsetToCenter())
-            # qp.drawPixmap(0, 0, self._pixmap)
+            exposed = inv_wt.mapRect(event.rect()).adjusted(-1, -1, 1, 1)
             qp.drawPixmap(exposed, self._pixmap, exposed)
         else:
             qp.translate(self.offsetToCenter())
@@ -73,11 +67,12 @@ class ImageCanvas(QWidget):
         return QPointF(point.x()/self._scale, point.y()/self._scale) - self.offsetToCenter()
 
     def pixelAtWidgetPos(self, widget_pos):
+        """Returns the pixel position at the given widget coordinate."""
         return self.transformPos(widget_pos)
 
     def pixelToWidgetPos(self, pixel_pos):
+        """Compute the widget position of the given pixel position."""
         return (pixel_pos + self.offsetToCenter()) * self._scale
-        # return self.mapToGlobal(QPoint(int(widget_pos.x()), int(widget_pos.y())))
 
     def offsetToCenter(self):
         area = super(type(self), self).size()
@@ -112,22 +107,6 @@ class ImageCanvas(QWidget):
             dx and self.scrollRequest.emit(dx, Qt.Horizontal)
             dy and self.scrollRequest.emit(dy, Qt.Vertical)
         event.accept()
-
-    def currentCursor(self):
-        cursor = QApplication.overrideCursor()
-        if cursor is not None:
-            cursor = cursor.shape()
-        return cursor
-
-    def overrideCursor(self, cursor):
-        self._cursor = cursor
-        if self.currentCursor() is None:
-            QApplication.setOverrideCursor(cursor)
-        else:
-            QApplication.changeOverrideCursor(cursor)
-
-    def restoreCursor(self):
-        QApplication.restoreOverrideCursor()
 
 
 class ImageViewer(QScrollArea):

@@ -12,7 +12,6 @@ from PyQt5.QtGui import *
 from . import colormaps as colormaps
 from . import imgview as imgview
 from . import inputs as inputs
-from . import utils as utils
 
 # Utils to format a data point (depending on the range)
 def fmtf(v):
@@ -88,7 +87,7 @@ class ColorBar(QWidget):
         qp.setFont(QFont('sans-serif', self._font_size))
 
         if self._is_boolean:
-            # We don't need to draw a color gradient for boolean data
+            # For binary/boolean data, we only need to show the two visualized colors.
             rgb = self._colormap[-1]
             brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
             qp.fillRect(self._bar_padding, 0, self._bar_width, np.ceil(size.height()/2), brush)
@@ -96,10 +95,13 @@ class ColorBar(QWidget):
             brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
             qp.fillRect(self._bar_padding, np.floor(size.height()/2), self._bar_width, np.ceil(size.height()/2), brush)
             # Draw labels
-            qp.drawText(QPoint(2*self._bar_padding + self._bar_width,int(size.height()*0.25)),'True')
-            qp.drawText(QPoint(2*self._bar_padding + self._bar_width,int(size.height()*0.75)),'False')
+            qp.drawText(QPoint(2*self._bar_padding + self._bar_width,int(size.height()*0.25)), 'True')
+            qp.drawText(QPoint(2*self._bar_padding + self._bar_width,int(size.height()*0.75)), 'False')
         elif self._categories is not None:
-            # Compute height of each colored block (one for each category)
+            # For label images, we don't need the full colormap gradient, but only
+            # one block for each class/label/category.
+
+            # Compute height of each colored block.
             num_categories = len(self._categories)
             step_height = size.height() /float(num_categories)
             cm_indices = np.linspace(0, 255, num_categories).astype(np.uint8)
@@ -130,7 +132,7 @@ class ColorBar(QWidget):
             for i in range(num_labels):
                 qp.drawText(lpos[i], fmti(labels[i]))
         else:
-            # Draw gradients
+            # Draw color gradients
             num_gradient_steps = min(size.height(), 256)
             step_height = size.height() /float(num_gradient_steps)
             cm_indices = np.linspace(0, 255, num_gradient_steps).astype(np.uint8)
@@ -374,6 +376,20 @@ class Inspector(QMainWindow):
         QToolTip.showText(QCursor().pos(), self._tooltipMessage(q))
 
 
+def flip_layers(nparray):
+    """
+    Flip RGB to BGR image data (numpy ndarray).
+    Also accepts rgbA/bgrA and single channel images without crashing.
+    """
+    if len(nparray.shape) == 3:
+        if nparray.shape[2] == 4:
+            # We got xyzA, make zyxA
+            return nparray[...,[2,1,0,3]]
+        else:
+            return nparray[:,:,::-1]
+    return nparray
+
+
 def inspect(data, label='Data Inspection', flip_channels=False, is_categoric=False):
     """I really liked the MATLAB way of inspecting data on the fly, so here
     is my python3 inspect solution.
@@ -386,7 +402,7 @@ def inspect(data, label='Data Inspection', flip_channels=False, is_categoric=Fal
         the input is categoric (i.e. a label image), so set this flag manually
     """
     if flip_channels:
-        data = utils.flip_layers(data)
+        data = flip_layers(data)
     app = QApplication([label])
     main_widget = Inspector(data, is_categoric)
     #TODO Maybe support a non-blocking inspection method if there is a way to update

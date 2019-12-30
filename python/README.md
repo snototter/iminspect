@@ -1,24 +1,25 @@
 # iminspect
-A `python3` utility package for image/matrix visualization.
+A python utility package for image/matrix visualization.
 
 ## Dependencies
+* `numpy`, obviously
 * `PyQt5` for the graphical user interface
 * `qimage2ndarray` to convert numpy ndarrays to Qt images
-* `numpy`, obviously
 
 ## Example usage:
 ```python
-from iminspect.inspector import inspect as inspect
+from iminspect.inspector import inspect
 import numpy as np
+
+# Show random noise image:
+inspect(np.random.rand(4096,4096) - 0.5)
 
 # Show as class labels:
 inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), is_categoric=True)
-
-# Random noise:
-inspect(np.random.rand(4096,4096))
 ```
 
 ## UI Documentation
+* To inspect a data point/pixel, just move the mouse above it.
 * Zooming
   * `Ctrl+Wheel` to zoom in/out
   * Additionally holding `Shift` speeds up zooming
@@ -26,4 +27,4 @@ inspect(np.random.rand(4096,4096))
   * Move the scroll bars
   * `Wheel` up/down
   * Additionally holding `Shift` speeds up scrolling
-* Value at the cursor position will be displayed as tool tip and within the status bar
+
