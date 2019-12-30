@@ -3,6 +3,10 @@ Package creation script
 
 How to packaging:
 https://packaging.python.org/tutorials/packaging-projects/
+
+From the python3 virtualenv:
+pip install --upgrade setuptools wheel
+python setup.py sdist bdist_wheel
 """
 
 import setuptools

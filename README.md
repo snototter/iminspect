@@ -18,6 +18,9 @@ inspect(np.random.rand(4096,4096) - 0.5)
 inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), is_categoric=True)
 ```
 
+Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
+![Screenshot](https://github.com/snototter/iminspect/blob/master/iminspect.jpg?raw=true "iminspect GUI")
+
 ## UI Documentation
 * To inspect a data point/pixel, just move the mouse above it.
 * Zooming
