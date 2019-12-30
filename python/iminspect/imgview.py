@@ -142,14 +142,15 @@ class ImageCanvas(QWidget):
             return
         # Sanity check the given rect
         l, t, w, h = rect
-        r, b = l + w, t + h
-        l = max(0, min(self._pixmap.width()-1, int(l)))
-        r = max(0, min(self._pixmap.width()-1, int(r)))
-        t = max(0, min(self._pixmap.height()-1, int(t)))
-        b = max(0, min(self._pixmap.height()-1, int(b)))
-        w = r - l
-        h = b - t
-        self._rectangle = (l, t, w, h)
+        r = l + w
+        b = t + h
+        li = max(0, min(self._pixmap.width()-1, int(l)))
+        ri = max(0, min(self._pixmap.width()-1, int(r)))
+        ti = max(0, min(self._pixmap.height()-1, int(t)))
+        bi = max(0, min(self._pixmap.height()-1, int(b)))
+        wi = ri - li
+        hi = bi - ti
+        self._rectangle = (li, ti, wi, hi)
         self.update()
 
     def transformPos(self, point):
