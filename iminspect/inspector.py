@@ -6,7 +6,7 @@ import numpy as np
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
     QShortcut
-from PyQt5.QtCore import QSize, QPoint, pyqtSlot
+from PyQt5.QtCore import Qt, QSize, QPoint, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
     QKeySequence
 
@@ -376,6 +376,35 @@ class Inspector(QMainWindow):
         # Close window
         self._shortcut_exit = QShortcut(QKeySequence('Ctrl+Q'), self)
         self._shortcut_exit.activated.connect(QApplication.instance().quit)
+        # Zooming
+        self._shortcut_zoom_in = QShortcut(QKeySequence('Ctrl++'), self)
+        self._shortcut_zoom_in.activated.connect(lambda: self._img_viewer.zoom(120))
+        self._shortcut_zoom_in_fast = QShortcut(QKeySequence('Ctrl+Shift++'), self)
+        self._shortcut_zoom_in_fast.activated.connect(lambda: self._img_viewer.zoom(1200))
+        self._shortcut_zoom_out = QShortcut(QKeySequence('Ctrl+-'), self)
+        self._shortcut_zoom_out.activated.connect(lambda: self._img_viewer.zoom(-120))
+        self._shortcut_zoom_out_fast = QShortcut(QKeySequence('Ctrl+Shift+-'), self)
+        self._shortcut_zoom_out_fast.activated.connect(lambda: self._img_viewer.zoom(-1200))
+        # Scrolling
+        self._shortcut_scroll_up = QShortcut(QKeySequence('Ctrl+Up'), self)
+        self._shortcut_scroll_up.activated.connect(lambda: self._img_viewer.scroll(120, Qt.Vertical))
+        self._shortcut_scroll_up_fast = QShortcut(QKeySequence('Ctrl+Shift+Up'), self)
+        self._shortcut_scroll_up_fast.activated.connect(lambda: self._img_viewer.scroll(1200, Qt.Vertical))
+        self._shortcut_scroll_down = QShortcut(QKeySequence('Ctrl+Down'), self)
+        self._shortcut_scroll_down.activated.connect(lambda: self._img_viewer.scroll(-120, Qt.Vertical))
+        self._shortcut_scroll_down_fast = QShortcut(QKeySequence('Ctrl+Shift+Down'), self)
+        self._shortcut_scroll_down_fast.activated.connect(lambda: self._img_viewer.scroll(-1200, Qt.Vertical))
+        self._shortcut_scroll_left = QShortcut(QKeySequence('Ctrl+Left'), self)
+        self._shortcut_scroll_left.activated.connect(lambda: self._img_viewer.scroll(120, Qt.Horizontal))
+        self._shortcut_scroll_left_fast = QShortcut(QKeySequence('Ctrl+Shift+Left'), self)
+        self._shortcut_scroll_left_fast.activated.connect(lambda: self._img_viewer.scroll(1200, Qt.Horizontal))
+        self._shortcut_scroll_right = QShortcut(QKeySequence('Ctrl+Right'), self)
+        self._shortcut_scroll_right.activated.connect(lambda: self._img_viewer.scroll(-120, Qt.Horizontal))
+        self._shortcut_scroll_right_fast = QShortcut(QKeySequence('Ctrl+Shift+Right'), self)
+        self._shortcut_scroll_right_fast.activated.connect(lambda: self._img_viewer.scroll(-1200, Qt.Horizontal))
+        # Scale to fit window
+        self._shortcut_scale_fit = QShortcut(QKeySequence('Ctrl+F'), self)
+        self._shortcut_scale_fit.activated.connect(self._img_viewer.scaleToFitWindow)
 
 
     def _updateDisplay(self, *args):

@@ -296,6 +296,10 @@ class ImageViewer(QScrollArea):
             self._linked_viewers.extend(others)
 
     def zoom(self, delta, notify_linked=True):
+        """Scale the displayed image. Zoom in if delta > 0.
+        Usually to be called with mouse wheel delta values, thus
+        the actual zoom steps are computed as delta/120.
+        """
         # Currently, we adjust the scroll bar position such that the cursor stays
         # at the same pixel. This works well if both scroll bars are visible, otherwise,
         # only one axes is adjusted accordingly.
@@ -312,6 +316,7 @@ class ImageViewer(QScrollArea):
             delta_widget = self._canvas.pixelToWidgetPos(px_pos_curr) - self._canvas.pixelToWidgetPos(px_pos_prev)
             self.scroll(delta_widget.x()*120/self.horizontalScrollBar().singleStep(), Qt.Horizontal, notify_linked=True)
             self.scroll(delta_widget.y()*120/self.verticalScrollBar().singleStep(), Qt.Vertical, notify_linked=True)
+        # TODO emit mouse moved if cursor hovers over the image (pixel position may have changed)
 
     def scroll(self, delta, orientation, notify_linked=True):
         """Slot for scrollRequest signal of image canvas."""
@@ -321,6 +326,7 @@ class ImageViewer(QScrollArea):
         if notify_linked:
             for v in self._linked_viewers:
                 v.scroll(delta, orientation, notify_linked=False)
+        # TODO emit mouse moved if cursor hovers over the image (pixel position may have changed)
 
     def showImage(self, img, adjust_size=True):
         qimage = qimage2ndarray.array2qimage(img.copy())
@@ -354,6 +360,7 @@ class ImageViewer(QScrollArea):
         a2 = w2 / h2
         self._img_scale = w1 / w2 if a2 >= a1 else h1 / h2
         self.paintCanvas()
+        # TODO emit mouse moved if cursor hovers over the image (pixel position may have changed)
 
     def paintCanvas(self):
         if self._img_np is None:

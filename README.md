@@ -25,13 +25,24 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 * To inspect a data point/pixel, just move the mouse above it.
 * Zooming
   * `Ctrl+Wheel` to zoom in/out
-  * Additionally holding `Shift` speeds up zooming
+  * `Ctrl+Shift+Wheel` to speed up zooming
+  * `Ctrl++`/`Ctrl+-` to zoom in/out
+  * `Ctrl+Shift++`/`Ctrl+Shift+-` to zoom in/out faster
 * Scrolling
   * Move the scroll bars
   * `Wheel` up/down
-  * Additionally holding `Shift` speeds up scrolling
+  * `Shift+Wheel` speeds up scrolling
+  * `Ctrl+Up`/`Ctrl+Down` to scroll up/down
+  * `Ctrl+Left`/`Ctrl+Right` to scroll left/right
+  * `Ctrl+Shift+{Up|Down|Left|Right}` scrolls faster
+* Keyboard shortcuts
+  * `Ctrl+Q` closes the inspection GUI
+  * `Ctrl+O` opens an image/supported file format from disk
 
 ## Changelog
+* `0.1.3`
+  * Usability:
+    * Keyboard shortcuts for zooming, scaling and scrolling
 * `0.1.2`
   * Added tests for non-GUI functionality
   * Integrate github runners for test/build/deploy
@@ -49,4 +60,3 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 ## Upcoming Changes
 * [ ] Support flow visualization<br/>2-layer flow, default to color wheel representation, port C++/MATLAB https://people.csail.mit.edu/celiu/OpticalFlow/
 * [ ] Add load from disk functionality
-* [ ] Support keyboard shortcuts for zooming/scrolling, scaleToFit
