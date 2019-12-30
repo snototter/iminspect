@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Standard widgets for user input.""" 
+"""
+Standard widgets for user input.
+They take care of adding a label to a default input widget, proper spacing,
+etc. Additionally, they emit a single signal "value_changed" and provide a
+"get_input()" function (because I'm too lazy to remember the correct getters
+for all the Qt standard widgets).
+""" 
 
 import os
 import sys

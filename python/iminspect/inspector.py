@@ -164,7 +164,7 @@ class Inspector(QMainWindow):
         'earth', 'hot', 'hsv', 'inferno', 'jet', 'magma', 'parula', 
         'pastel', 'plasma', 'sepia', 'temperature', 'thermal', 'viridis']
 
-    def __init__(self, data, is_categoric):
+    def __init__(self, data, is_categoric, display_settings=None):
         super(type(self), self).__init__()
         self._data = data                   # The raw data
         self._is_categoric = is_categoric   # Whether the data is categoric (a label image) or not
@@ -202,6 +202,33 @@ class Inspector(QMainWindow):
 
         # Now we're ready to visualize the data
         self._updateDisplay()
+        # Restore display settings
+        self.restoreDisplaySettings(display_settings)
+
+    def currentDisplaySettings(self):
+        #TODO add UI selections; merge dicts: d1.update(d2)
+        settings = {
+            'wsize': self.size(),
+            'screenpos': self.mapToGlobal(QPoint(0, 0)),
+            'cb:sor': self._checkbox_scale_on_resize.get_input()
+        }
+        settings.update(self._img_viewer.currentDisplaySettings())
+        return settings
+
+    def restoreDisplaySettings(self, settings):
+        if settings is None:
+            return
+        #TODO restore UI selections (requires setValue for custom input widgets)
+        self.resize(settings['wsize'])
+        # Note that restoring the position doesn't always work (issues with
+        # windows that are placed partially outside the screen)
+        self.move(settings['screenpos'])
+        self._img_viewer.restoreDisplaySettings(settings)
+
+    def resizeEvent(self, event):
+        super(type(self), self).resizeEvent(event)
+        if self._checkbox_scale_on_resize.get_input():
+            self._img_viewer.scaleToFitWindow()
 
 
     def _prepareLayout(self):
@@ -217,7 +244,7 @@ class Inspector(QMainWindow):
             main_layout.addWidget(self._layer_dropdown)
 
         if not self._is_single_channel and not self._is_categoric:
-            self._checkbox_global_limits = inputs.CheckBoxWidget('Use same limits for all channels:', checkbox_left=False, is_checked=True)
+            self._checkbox_global_limits = inputs.CheckBoxWidget('Use same visualization limits for all channels:', checkbox_left=False, is_checked=True)
             main_layout.addWidget(self._checkbox_global_limits)
             self._checkbox_global_limits.value_changed.connect(self._updateDisplay)
         else:
@@ -233,7 +260,11 @@ class Inspector(QMainWindow):
         self._visualization_dropdown.value_changed.connect(self._updateDisplay)
         main_layout.addWidget(self._visualization_dropdown)
 
-        # Show image viewer and colorbar        
+        # Let the user decide whether to scale the image upon window resize events.
+        self._checkbox_scale_on_resize = inputs.CheckBoxWidget('Scale image on window resize:', checkbox_left=False, is_checked=False)
+        main_layout.addWidget(self._checkbox_scale_on_resize)
+
+        # Image viewer and colorbar        
         img_layout = QHBoxLayout()
         self._img_viewer = imgview.ImageViewer()
         self._img_viewer.mouseMoved.connect(self._mouseMoved)
@@ -364,6 +395,9 @@ class Inspector(QMainWindow):
             s += '<tr><td>Layer:</td><td>' + query['currlayer'] + '</td></tr>'
         if query['pseudocol'] is not None:
             s += '<tr><td>Colormap:</td><td> ' + query['pseudocol'] + '</td></tr>'
+        scale = self._img_viewer.currentImageScale()
+        if scale != 1.0:
+            s += '<tr><td>Scale:</td><td>{:.2f} %</td></tr>'.format(scale*100)
         s += '</table>'
         return s
 
@@ -376,7 +410,7 @@ class Inspector(QMainWindow):
         QToolTip.showText(QCursor().pos(), self._tooltipMessage(q))
 
 
-def flip_layers(nparray):
+def flipLayers(nparray):
     """
     Flip RGB to BGR image data (numpy ndarray).
     Also accepts rgbA/bgrA and single channel images without crashing.
@@ -390,24 +424,36 @@ def flip_layers(nparray):
     return nparray
 
 
-def inspect(data, label='Data Inspection', flip_channels=False, is_categoric=False):
-    """I really liked the MATLAB way of inspecting data on the fly, so here
-    is my python3 inspect solution.
+def inspect(data, label='Data Inspection', flip_channels=False, is_categoric=False, display_settings=None):
+    """Opens a GUI to visualize the given image data.
     
-    data: numpy ndarray to be visualized
-    label: window title
+    data:          numpy ndarray to be visualized.
+    label:         window title.
     flip_channels: this qt window works with RGB images, so flip_channels must
-        be set True if your data is BGR
-    is_categoric: I don't know a generic and elegant way of determining whether
-        the input is categoric (i.e. a label image), so set this flag manually
+                   be set True if your data is BGR.
+    is_categoric:  I don't know a generic and elegant way of determining 
+                   whether the input is categoric (i.e. a label image) or if
+                   you really wanted to display some integer data (e.g. 
+                   disparities). Thus, set this flag if you want to display a
+                   label image.
+    display_settings: a dictionary of display settings in case you want to 
+                   restore the previous settings. The current settings are
+                   returned by this function.
+
+    returns: the window's exit code and a dictionary of currently used display
+             settings.
     """
     if flip_channels:
-        data = flip_layers(data)
+        data = flipLayers(data)
     app = QApplication([label])
-    main_widget = Inspector(data, is_categoric)
-    #TODO Maybe support a non-blocking inspection method if there is a way to update
-    # the UI while continuing the main computation thread...
-    return app.exec_()
+    main_widget = Inspector(data, is_categoric, display_settings)
+    rc = app.exec_()
+    # Query the viewer settings (in case the user wants to restore them for the 
+    # next image)
+    display_settings = main_widget.currentDisplaySettings()
+    return rc, display_settings
+
 
 if __name__ == '__main__':
-    print('Please see the example application at ../examples/inspect_demo.py!')
+    print('Please refer to the example application at ../examples/inspect_demo.py!')
+    print('If not included in your package, see https://github.com/snototter/iminspect')

@@ -134,6 +134,27 @@ class ImageViewer(QScrollArea):
         self.verticalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Vertical))
         self.horizontalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Horizontal))
 
+    def currentDisplaySettings(self):
+        """Query the current zoom/scroll settings, so you can restore them.
+        For example, if you want to show the same region of interest for another
+        image.
+        """
+        return { Qt.Vertical: self.verticalScrollBar().value(),
+            Qt.Horizontal: self.horizontalScrollBar().value(),
+            'zoom': self._img_scale
+        }
+
+    def restoreDisplaySettings(self, settings):
+        # First, zoom in, then scroll.
+        self._img_scale = settings['zoom']
+        self.paintCanvas()
+        for orientation in [Qt.Horizontal, Qt.Vertical]:
+            self._scoll_bars[orientation].setValue(settings[orientation])
+
+    def currentImageScale(self):
+        """Returns the currently applied image scale factor."""
+        return self._img_scale
+
     def mouseMovedHandler(self, pixmap_pos):
         self.mouseMoved.emit(pixmap_pos)
 
@@ -194,11 +215,13 @@ class ImageViewer(QScrollArea):
         
         if adjust_size:
             # self._img_scale = 1.0
-            self._img_scale = self.scaleFitWindow()
+            self.scaleToFitWindow()
         self.paintCanvas()
 
-    def scaleFitWindow(self):
+    def scaleToFitWindow(self):
         """Scale the image such that it fills the canvas area."""
+        if self._img_np is None:
+            return
         eps = 2.0 # Prevent scrollbars
         w1 = self.width() - eps
         h1 = self.height() - eps
@@ -206,7 +229,8 @@ class ImageViewer(QScrollArea):
         w2 = float(self._canvas.pixmap().width())
         h2 = float(self._canvas.pixmap().height())
         a2 = w2 / h2
-        return w1 / w2 if a2 >= a1 else h1 / h2
+        self._img_scale = w1 / w2 if a2 >= a1 else h1 / h2
+        self.paintCanvas()
 
     def paintCanvas(self):
         if self._img_np is None:
@@ -219,12 +243,13 @@ class ImageViewer(QScrollArea):
 
 
 class ImageViewerDemoApplication(QMainWindow):
+    """Demo GUI showing three linked image 
+    viewers next to each other."""
     def __init__(self, img_np):
         super(type(self), self).__init__()
         self._prepareLayout()
         self.show()
-        self._showImage(img_np)
-
+        self.showImage(img_np)
 
     def _prepareLayout(self):
         import sys
@@ -233,33 +258,31 @@ class ImageViewerDemoApplication(QMainWindow):
         self._main_widget = QWidget()
         main_layout = QHBoxLayout()
 
-        self._img_viewer_a = ImageViewer()
-        main_layout.addWidget(self._img_viewer_a)
+        img_viewer_a = ImageViewer()
+        main_layout.addWidget(img_viewer_a)
 
         main_layout.addWidget(VLine())
 
-        self._img_viewer_b = ImageViewer()
-        main_layout.addWidget(self._img_viewer_b)
+        img_viewer_b = ImageViewer()
+        main_layout.addWidget(img_viewer_b)
 
         main_layout.addWidget(VLine())
 
-        self._img_viewer_c = ImageViewer()
-        main_layout.addWidget(self._img_viewer_c)
+        img_viewer_c = ImageViewer()
+        main_layout.addWidget(img_viewer_c)
 
         self._main_widget.setLayout(main_layout)
         self.setCentralWidget(self._main_widget)
         self.resize(QSize(1280, 300))
 
         # # Link all viewers, so they zoom/scroll the same...
-        viewers = [self._img_viewer_a, self._img_viewer_b, self._img_viewer_c]
-        for v in viewers:
-            v.linkViewers(viewers)
+        self._viewers = [img_viewer_a, img_viewer_b, img_viewer_c]
+        for v in self._viewers:
+            v.linkViewers(self._viewers)
 
-
-    def _showImage(self, img):
-        self._img_viewer_a.showImage(img)
-        self._img_viewer_b.showImage(img)
-        self._img_viewer_c.showImage(img)
+    def showImage(self, img):
+        for v in self._viewers:
+            v.showImage(img)
 
 
 def run_demo():
@@ -270,7 +293,6 @@ def run_demo():
     img_np = image = np.asarray(Image.open(\
         os.path.join(os.path.dirname(\
             os.path.abspath(__file__)), '../examples/lena.jpg')).convert('RGB'))
-    ImageViewer.ZOOM_FACTOR = 0.5
     main_widget = ImageViewerDemoApplication(img_np)
     sys.exit(app.exec_())
 

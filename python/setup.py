@@ -11,11 +11,9 @@ python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 pip install --index-url https://test.pypi.org/simple/ --no-deps iminspect-snototter
 
 TODO list
-* Check Zooming (unlock mouse wheel lock) - replace increment by factor
-* Add data stas to GUI
-X Refactor code (remove utils and PIL dependency)
-* Refactor documentation
+* Add data stats to GUI
 * Upload to pypi
+* display settings (scroll bar not correctly restored????)
 """
 import setuptools
 

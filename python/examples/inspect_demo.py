@@ -31,11 +31,11 @@ if __name__ == "__main__":
     weights = imread('peaks.png', mode='L')
     # Show as float data type, data range [-0.5, 0.5]
     weights_f32 = weights.astype(np.float32) / 255.0 - 0.5
-    inspect(weights_f32, label='Demo monochrome [{}]'.format(weights_f32.dtype))
+    _, display_settings = inspect(weights_f32, label='Demo monochrome [{}]'.format(weights_f32.dtype))
 
-    # Inspect a boolean mask
+    # Inspect a boolean mask (and restore the previous display settings)
     mask = weights > 127
-    inspect(mask, label='Demo mask [{}]'.format(mask.dtype))
+    _, display_settings = inspect(mask, label='Demo mask [{}]'.format(mask.dtype), display_settings=display_settings)
 
     # # Inspect an integer label image
     # lbls = np.zeros(mask.shape, dtype=np.int16)
@@ -48,8 +48,4 @@ if __name__ == "__main__":
 
     # Inspect an image with 11 labels
     cats = (weights / 25).astype(np.int16) - 7
-    inspect(cats, is_categoric=True, label='Demo 11 labels')
-
-
-
-
+    inspect(cats, is_categoric=True, label='Demo 11 labels', display_settings=display_settings)
