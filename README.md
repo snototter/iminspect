@@ -1,4 +1,7 @@
 # iminspect
+[![View on PyPI](https://img.shields.io/pypi/v/iminspect.svg)](https://pypi.org/project/iminspect)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/snototter/iminspect/blob/master/iminspect.jpg?raw=true)
+
 A python utility package for image/matrix visualization.
 
 ## Dependencies
@@ -40,9 +43,11 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
   * `Ctrl+O` opens an image/supported file format from disk
 
 ## Changelog
-* `0.1.3`
+* Upcoming `0.1.3`
   * Usability:
     * Keyboard shortcuts for zooming, scaling and scrolling
+    * TBD Load supported files from disk
+    * TBD Initial flow visualization
 * `0.1.2`
   * Added tests for non-GUI functionality
   * Integrate github runners for test/build/deploy
