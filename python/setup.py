@@ -11,7 +11,6 @@ python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 pip install --index-url https://test.pypi.org/simple/ --no-deps iminspect-snototter
 
 TODO list
-* Check why LICENSE is not included
 * Check Zooming (unlock mouse wheel lock) - replace increment by factor
 * Add data stas to GUI
 X Refactor code (remove utils and PIL dependency)
@@ -44,7 +43,6 @@ setuptools.setup(
         'Pillow', 
         'PyQt5', 
         'qimage2ndarray'],
- #   license='MIT',
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
