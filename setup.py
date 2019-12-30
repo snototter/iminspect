@@ -7,6 +7,9 @@ https://packaging.python.org/tutorials/packaging-projects/
 From the python3 virtualenv:
 pip install --upgrade setuptools wheel
 python setup.py sdist bdist_wheel
+pip install --upgrade twine
+twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+twine upload dist/*
 """
 
 import setuptools
