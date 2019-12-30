@@ -33,9 +33,8 @@ setuptools.setup(
     url="https://github.com/snototter/iminspect",
     packages=setuptools.find_packages(),
     install_requires=[
-        'numpy', 
-        'Pillow', 
-        'PyQt5', 
+        'numpy',
+        'PyQt5',
         'qimage2ndarray'],
     classifiers=[
         "Programming Language :: Python :: 3",
