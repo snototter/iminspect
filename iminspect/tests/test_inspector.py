@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# coding=utf-8
+
+"""
+Very simple test suite (as most of the functionality is GUI-based and thus,
+rather complex to test).
+"""
+
 import numpy as np
 from ..inspector import fmti, fmtb, fmtf, fmt1f, fmt2f, fmt3f, fmt4f, \
     flipLayers
