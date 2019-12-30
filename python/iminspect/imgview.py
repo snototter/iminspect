@@ -134,22 +134,33 @@ class ImageViewer(QScrollArea):
         self.verticalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Vertical))
         self.horizontalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Horizontal))
 
+
     def currentDisplaySettings(self):
         """Query the current zoom/scroll settings, so you can restore them.
         For example, if you want to show the same region of interest for another
         image.
         """
-        return { Qt.Vertical: self.verticalScrollBar().value(),
-            Qt.Horizontal: self.horizontalScrollBar().value(),
-            'zoom': self._img_scale
-        }
+        settings = {'zoom': self._img_scale}
+        for orientation in [Qt.Horizontal, Qt.Vertical]:
+            bar = self._scoll_bars[orientation]
+            settings[orientation] = (bar.minimum(), bar.value(), bar.maximum())
+        return settings
 
     def restoreDisplaySettings(self, settings):
-        # First, zoom in, then scroll.
         self._img_scale = settings['zoom']
         self.paintCanvas()
+        # Potential issue: scrollbars may only appear during repainting the
+        # widget. Then, setting their value won't work. Best and least 
+        # complicated way I found so far: force Qt to process the event loop
+        # after adjusting the bar's range (and before setting the new value).
         for orientation in [Qt.Horizontal, Qt.Vertical]:
-            self._scoll_bars[orientation].setValue(settings[orientation])
+            bar = self._scoll_bars[orientation]
+            bmin, bval, bmax = settings[orientation]
+            if bval != 0:
+                bar.setMinimum(bmin)
+                bar.setMaximum(bmax)
+                qApp.processEvents()
+                bar.setValue(bval)
 
     def currentImageScale(self):
         """Returns the currently applied image scale factor."""

@@ -171,69 +171,118 @@ class Inspector(QMainWindow):
         self._visualized_data = None        # Currently visualized data (e.g. a single channel)
         self._visualized_pseudocolor = None # Currently visualized pseudocolorized data
         self._reset_viewer = True           # Flag to reset (adjust size and translation) the image viewer
+
+        # Set up GUI
         self._prepareLayout()
         self.show()
-
-        print('##################################################\nData inspection:\n')
-        print('Data type: {}'.format(data.dtype))
-        print('Shape:     {}\n'.format(data.shape))
-        self._data_limits = [np.min(data[:]), np.max(data[:])]
-        print('Minimum: {}'.format(self._data_limits[0]))
-        print('Maximum: {}'.format(self._data_limits[1]))
-        print('Mean:    {}\n'.format(np.mean(data[:])))
-        if not self._is_single_channel:
-            for c in range(data.shape[2]):
-                print('Minimum on channel {}: {}'.format(c, np.min(data[:,:,c])))
-                print('Maximum on channel {}: {}'.format(c, np.max(data[:,:,c])))
-                print('Mean on channel {}:    {}\n'.format(c, np.mean(data[:,:,c])))
-        # Select format function to display data in status bar/tooltip
-        if data.dtype == np.bool:
-            self._data_limits = [float(v) for v in self._data_limits]
-            self.__fmt_fx = fmtb
-            self._colorbar.setBoolean(True)
-        elif is_categoric:
-            self.__fmt_fx = fmti
-            self._data_categories, ic = np.unique(data, return_inverse=True)
-            self._data_inverse_categories = ic.reshape(data.shape)
-            self._colorbar.setCategories(self._data_categories)
-            print('This is a categoric/label image with {:d} categories'.format(len(self._data_categories)))
-        else:
-            self.__fmt_fx = best_format_fx(self._data_limits)
-
+        # Analyze the given data (range, data type, channels, etc.)
+        self._queryStatistics()
         # Now we're ready to visualize the data
         self._updateDisplay()
         # Restore display settings
         self.restoreDisplaySettings(display_settings)
 
+    def _queryStatistics(self):
+        """Analyzes the internal _data field (range, data type, channels, 
+        etc.) and sets member variables accordingly.
+        Additionally, information will be printed to stdout and shown on
+        the GUI.
+        """
+        self._data_limits = [np.min(self._data[:]), np.max(self._data[:])]
+
+        stdout_str = list()
+        stdout_str.append('##################################################\nData inspection:\n')
+        stdout_str.append('Data type: {}'.format(self._data.dtype))
+        stdout_str.append('Shape:     {}\n'.format(self._data.shape))
+        #
+        lbl_txt = '<table cellpadding="5"><tr><th colspan="2">Information</th></tr>'
+        lbl_txt += '<tr><td>Type: {}</td><td>Shape: {}</td></tr>'.format(self._data.dtype, self._data.shape)
+
+        # Select format function to display data in status bar/tooltip
+        if self._data.dtype == np.bool:
+            self._data_limits = [float(v) for v in self._data_limits]
+            self.__fmt_fx = fmtb
+            self._colorbar.setBoolean(True)
+        elif self._is_categoric:
+            self.__fmt_fx = fmti
+            self._data_categories, ic = np.unique(self._data, return_inverse=True)
+            self._data_inverse_categories = ic.reshape(self._data.shape)
+            self._colorbar.setCategories(self._data_categories)
+        else:
+            self.__fmt_fx = best_format_fx(self._data_limits)
+
+        if self._is_categoric:
+            stdout_str.append('This is a categoric/label image with {:d} categories'.format(len(self._data_categories)))
+            lbl_txt += '<tr><td colspan="2">Label image, {:d} classes.</td></tr>'.format(len(self._data_categories))
+        elif self._data.dtype == np.bool:
+            lbl_txt += '<tr><td colspan="2">Binary mask.</td></tr>'
+        else:
+            global_mean = np.mean(self._data[:])
+            global_std = np.std(self._data[:])
+            #
+            stdout_str.append('Minimum: {}'.format(self._data_limits[0]))
+            stdout_str.append('Maximum: {}'.format(self._data_limits[1]))
+            stdout_str.append('Mean:    {} +/- {}\n'.format(global_mean, global_std))
+            #
+            lbl_txt += '<tr><td>Range: [{}, {}]</td><td>Mean: {} &#177; {}</td></tr>'.format(
+                self.__fmt_fx(self._data_limits[0]),
+                self.__fmt_fx(self._data_limits[1]),
+                self.__fmt_fx(global_mean),
+                self.__fmt_fx(global_std))
+
+            if not self._is_single_channel:
+                for c in range(self._data.shape[2]):
+                    cmin = np.min(self._data[:,:,c])
+                    cmax = np.max(self._data[:,:,c])
+                    cmean = np.mean(self._data[:,:,c])
+                    cstd = np.std(self._data[:,:,c])
+                    #
+                    stdout_str.append('Minimum on channel {}: {}'.format(c, cmin))
+                    stdout_str.append('Maximum on channel {}: {}'.format(c, cmax))
+                    stdout_str.append('Mean on channel {}:    {} +/- {}\n'.format(c, cmean, cstd))
+                    #
+                    lbl_txt += '<tr><td>Channel {} range: [{}, {}]</td><td>Mean: {} &#177; {}</td></tr>'.format(
+                        c, self.__fmt_fx(cmin), self.__fmt_fx(cmax), self.__fmt_fx(cmean), self.__fmt_fx(cstd))
+
+        # Print to stdout
+        for s in stdout_str:
+            print(s)
+        # Show on label
+        lbl_txt += '</table>'
+        self._data_label.setText(lbl_txt)
+
     def currentDisplaySettings(self):
-        #TODO add UI selections; merge dicts: d1.update(d2)
         settings = {
             'wsize': self.size(),
             'screenpos': self.mapToGlobal(QPoint(0, 0)),
-            'cb:sor': self._checkbox_scale_on_resize.get_input()
+            'dd:vis': self._visualization_dropdown.get_input()[0]
         }
+        if not self._is_single_channel:
+            settings['dd:layer'] = self._layer_dropdown.get_input()[0]
+            settings['cb:globlim'] = self._checkbox_global_limits.get_input()
         settings.update(self._img_viewer.currentDisplaySettings())
         return settings
 
     def restoreDisplaySettings(self, settings):
         if settings is None:
             return
-        #TODO restore UI selections (requires setValue for custom input widgets)
+        # Restore customized UI settings
+        self._visualization_dropdown.set_value(settings['dd:vis'])
+        if not self._is_single_channel:
+            self._layer_dropdown.set_value(settings['dd:layer'])
+            self._checkbox_global_limits.set_value(settings['cb:globlim'])
+        # Restore window position/dimension
         self.resize(settings['wsize'])
         # Note that restoring the position doesn't always work (issues with
         # windows that are placed partially outside the screen)
         self.move(settings['screenpos'])
+        # Restore zoom/translation settings
         self._img_viewer.restoreDisplaySettings(settings)
-
-    def resizeEvent(self, event):
-        super(type(self), self).resizeEvent(event)
-        if self._checkbox_scale_on_resize.get_input():
-            self._img_viewer.scaleToFitWindow()
-
+        self._updateDisplay()
 
     def _prepareLayout(self):
         self._main_widget = QWidget()
-        main_layout = QVBoxLayout()
+        input_layout = QVBoxLayout()
 
         # Let user select a single channel if multi-channel input is provided
         self._is_single_channel = (len(self._data.shape) == 2) or (self._data.shape[2] == 1)
@@ -241,11 +290,11 @@ class Inspector(QMainWindow):
             dd_options = [(-1, 'All')] + [(c, 'Layer {:d}'.format(c)) for c in range(self._data.shape[2])]
             self._layer_dropdown = inputs.DropDownSelectionWidget('Select layer:', dd_options)
             self._layer_dropdown.value_changed.connect(self._updateDisplay)
-            main_layout.addWidget(self._layer_dropdown)
+            input_layout.addWidget(self._layer_dropdown)
 
         if not self._is_single_channel and not self._is_categoric:
             self._checkbox_global_limits = inputs.CheckBoxWidget('Use same visualization limits for all channels:', checkbox_left=False, is_checked=True)
-            main_layout.addWidget(self._checkbox_global_limits)
+            input_layout.addWidget(self._checkbox_global_limits)
             self._checkbox_global_limits.value_changed.connect(self._updateDisplay)
         else:
             self._checkbox_global_limits = None
@@ -258,11 +307,18 @@ class Inspector(QMainWindow):
         self._visualization_dropdown = inputs.DropDownSelectionWidget('Visualization:', vis_options,
             initial_selected_index = 0 if not self._is_single_channel else len(type(self).VIS_COLORMAPS)-1+2)
         self._visualization_dropdown.value_changed.connect(self._updateDisplay)
-        main_layout.addWidget(self._visualization_dropdown)
+        input_layout.addWidget(self._visualization_dropdown)
 
-        # Let the user decide whether to scale the image upon window resize events.
-        self._checkbox_scale_on_resize = inputs.CheckBoxWidget('Scale image on window resize:', checkbox_left=False, is_checked=False)
-        main_layout.addWidget(self._checkbox_scale_on_resize)
+        # Button to allow user scaling the displayed image
+        btn_scale_to_fit = QPushButton('Scale image to fit')
+        btn_scale_to_fit.clicked.connect(lambda: self._img_viewer.scaleToFitWindow())
+        input_layout.addWidget(btn_scale_to_fit)
+
+        # Label to show important image statistics/information
+        self._data_label = QLabel()
+        self._data_label.setFrameShape(QFrame.Panel)
+        self._data_label.setFrameShadow(QFrame.Sunken)
+        #TODO reorganize layout (e.g. data_label next to input fields)
 
         # Image viewer and colorbar        
         img_layout = QHBoxLayout()
@@ -272,14 +328,21 @@ class Inspector(QMainWindow):
         
         self._colorbar = ColorBar()
         img_layout.addWidget(self._colorbar)
-        main_layout.addLayout(img_layout)
 
         # Set font of tool tips
         QToolTip.setFont(QFont('SansSerif', 10))
 
         # Grab a convenience handle to the status bar
         self._status_bar = self.statusBar()
-        # Set the layout
+
+        # Place the information label next to the user inputs:
+        top_row_layout = QHBoxLayout()
+        top_row_layout.addLayout(input_layout)
+        top_row_layout.addWidget(self._data_label)
+        # Set the main widget's layout
+        main_layout = QVBoxLayout()
+        main_layout.addLayout(top_row_layout)
+        main_layout.addLayout(img_layout)
         self._main_widget.setLayout(main_layout)
         self.setCentralWidget(self._main_widget)
         self.resize(QSize(1280, 720))

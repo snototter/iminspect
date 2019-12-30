@@ -8,6 +8,9 @@ etc. Additionally, they emit a single signal "value_changed" and provide a
 for all the Qt standard widgets).
 """ 
 
+#TODO implement set_value for remaining widgets (currently only needed for 
+# checkboxes and dropdowns)
+
 import os
 import sys
 from enum import Enum
@@ -68,6 +71,9 @@ class CheckBoxWidget(InputWidget):
     def get_input(self):
         return self._cb.isChecked()
 
+    def set_value(self, b):
+        self._cb.setChecked(b)
+
 
 class SliderSelectionWidget(InputWidget):
     def __init__(self, label, min_value, max_value, num_steps, initial_value=None, label_format='{:d}', parent=None, min_label_width=None):
@@ -124,6 +130,10 @@ class SliderSelectionWidget(InputWidget):
 
     def get_input(self):
         return self.__slider_value()
+
+    def set_value(self, v):
+        self._slider.setValue(self.__to_slider_value(v))
+        self.__value_changed()
         
 
 
@@ -156,10 +166,19 @@ class DropDownSelectionWidget(InputWidget):
     def select_index(self, idx):
         self._combo.setCurrentIndex(idx)
 
-
     def get_input(self):
         return (self._combo.currentData(), self._combo.currentText())
 
+    def set_value(self, id):
+        """Selects the drop down element by its id (the one you specify
+        upon creation of this widget)."""
+        if id is tuple:
+            eid = id[0]
+        else:
+            eid = id
+        idx = self._combo.findData(eid)
+        if idx != -1:
+            self.select_index(idx)
 
 
 class SizeWidget(InputWidget):
