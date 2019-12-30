@@ -1,40 +1,25 @@
 # iminspect
+A python utility package for image/matrix visualization.
 
-Utils to quickly visualize image-like data to allow faster-paced development.
-
-# Python3 Package
-`python3` utility package for image/matrix visualization.
 ## Dependencies
-See `pip`-installable `<root>/python/requirements.txt`.
-In particular, we need:
+* `numpy`, obviously
 * `PyQt5` for the graphical user interface
 * `qimage2ndarray` to convert numpy ndarrays to Qt images
-* `numpy`, obviously
 
-## Demo
-
-Example usage:
+## Example usage:
 ```python
-from iminspect.inspector import inspect as inspect
+from iminspect.inspector import inspect
 import numpy as np
+
+# Show random noise image:
+inspect(np.random.rand(4096,4096) - 0.5)
 
 # Show as class labels:
 inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), is_categoric=True)
-
-# Random noise:
-inspect(np.random.rand(4096,4096))
 ```
-
-See also the provided demo application:
-```bash
-cd <root>/python/examples
-python3 inspect_demo.py
-```
-
-Exemplary screenshot, visualizing categoric data (i.e. class labels):
-![Screenshot](./python/iminspect.jpg "Screenshot")
 
 ## UI Documentation
+* To inspect a data point/pixel, just move the mouse above it.
 * Zooming
   * `Ctrl+Wheel` to zoom in/out
   * Additionally holding `Shift` speeds up zooming
@@ -42,14 +27,15 @@ Exemplary screenshot, visualizing categoric data (i.e. class labels):
   * Move the scroll bars
   * `Wheel` up/down
   * Additionally holding `Shift` speeds up scrolling
-* Value at the cursor position will be displayed as tool tip and within the status bar
 
-
-# TODO List
-To be done:
-* [ ] Explicit handling of flow (two layer flow/disparity ndarrays; default to flow wheel/disparity visualization)
-* [ ] Add load from disk functionality (?)
-* [ ] C++ port (leverage OpenCV UI 'capabilities' instead of qt)
-* [ ] Include additional pvt3 functionality (e.g. ROI selection widget)
-* [ ] Refactor (qt vs. custom naming schema)
+## Changelog
+* `0.1.1`
+  * Additional features:
+    * ImageCanvas supports ROI selection (useful for custom input widgets)
+  * Refactoring:
+    * Clean up imports
+    * Make pylint/flake8 happier
+  * Fixes:
+    * Adjust scrollbars when zooming multiple linked ImageCanvas
+* `0.1.0` - Initial public release
 
