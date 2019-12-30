@@ -32,11 +32,12 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
   * Additionally holding `Shift` speeds up scrolling
 
 ## Changelog
-* Upcoming `0.1.2`
-  * Additional features:
-    * TBD - Support flow visualization (2-layer flow/disparity data; default colormap to color wheel/disparity)
-    * TBD - Add load from disk functionality (?)
-    * Integrate github runners for build/deploy
+* Upcoming
+  * TBD - Support flow visualization (2-layer flow/disparity data; default colormap to color wheel/disparity)
+  * TBD - Add load from disk functionality (?)
+* `0.1.2`
+  * Added tests for non-GUI functionality
+  * Integrate github runners for test/build/deploy
 * `0.1.1`
   * Additional features:
     * ImageCanvas supports ROI selection (useful for custom input widgets)
