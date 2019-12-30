@@ -1,15 +1,9 @@
 """
 Package creation script
+
+How to packaging:
+https://packaging.python.org/tutorials/packaging-projects/
 """
-# How to: https://packaging.python.org/tutorials/packaging-projects/
-# * Build package
-#   pip install --upgrade setuptools wheel
-#   python setup.py sdist bdist_wheel
-# * Upload to TestPyPI
-#   pip install --upgrade twine
-#   python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-# * Test installation
-#   pip install --index-url https://test.pypi.org/simple/ --no-deps iminspect-snototter
 
 import setuptools
 
