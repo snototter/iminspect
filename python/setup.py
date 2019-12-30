@@ -1,16 +1,16 @@
 """
 Package creation script
-
-* Build package
-pip install --upgrade setuptools wheel
-python setup.py sdist bdist_wheel
-* Upload to TestPyPI
-pip install --upgrade twine
-python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-* Test installation
-pip install --index-url https://test.pypi.org/simple/ --no-deps iminspect-snototter
-
 """
+# How to: https://packaging.python.org/tutorials/packaging-projects/
+# * Build package
+#   pip install --upgrade setuptools wheel
+#   python setup.py sdist bdist_wheel
+# * Upload to TestPyPI
+#   pip install --upgrade twine
+#   python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+# * Test installation
+#   pip install --index-url https://test.pypi.org/simple/ --no-deps iminspect-snototter
+
 import setuptools
 
 # Load description
@@ -23,7 +23,7 @@ with open('iminspect/version.py') as fv:
     exec(fv.read(), loaded_vars)
 
 setuptools.setup(
-    name="iminspect-snototter",
+    name="iminspect",
     version=loaded_vars['__version__'],
     author="snototter",
     author_email="muspellr@gmail.com",
