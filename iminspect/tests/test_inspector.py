@@ -1,5 +1,6 @@
 import numpy as np
-from ..inspector import fmti, fmtb, fmtf, fmt1f, fmt2f, fmt3f, fmt4f, flipLayers
+from ..inspector import fmti, fmtb, fmtf, fmt1f, fmt2f, fmt3f, fmt4f, \
+    flipLayers
 
 
 def test_fmtb():
@@ -45,10 +46,12 @@ def test_fmt4f():
 
 
 def test_flipLayers():
-    x = np.random.rand(3,3)
+    # Single channel image
+    x = np.random.rand(3, 3)
     xf = flipLayers(x)
     assert np.all(x == xf)
 
+    # rgb to bgr conversion
     x = np.random.rand(16, 32, 3)
     xf = flipLayers(x)
     for c in range(x.shape[2]):
