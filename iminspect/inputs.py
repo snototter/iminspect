@@ -360,15 +360,17 @@ class SelectDirEntryWidget(InputWidget):
     def __select_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select a folder",
                 '' if self._selection is None else self._selection,
-                QFileDialog.ShowDirsOnly)
+                QFileDialog.ShowDirsOnly, QFileDialog.DontUseNativeDialog)
         self.__set_selection(folder)
 
     def __select_open_file(self):
-        filename, _ = QFileDialog.getOpenFileName(self, "Select file", "", self._filters)
+        filename, _ = QFileDialog.getOpenFileName(self, "Select file", "", self._filters,
+            None, QFileDialog.DontUseNativeDialog)
         self.__set_selection(filename)
 
     def __select_save_file(self):
-        filename, _ = QFileDialog.getSaveFileName(self, "Select file", "", self._filters)
+        filename, _ = QFileDialog.getSaveFileName(self, "Select file", "", self._filters,
+            None, QFileDialog.DontUseNativeDialog)
         self.__set_selection(filename)
 
 

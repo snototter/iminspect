@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Inspect matrix/image data"""
+#TODO try to load depth data (16bit png)!
 
 import numpy as np
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
-    QShortcut
+    QShortcut, QFileDialog
 from PyQt5.QtCore import Qt, QSize, QPoint, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
     QKeySequence
@@ -13,6 +14,7 @@ from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
 from vito import imutils
 from vito import colormaps
 from vito import imvis
+from vito import flow as flowutils
 
 from . import imgview as imgview
 from . import inputs as inputs
@@ -540,7 +542,39 @@ class Inspector(QMainWindow):
 
     @pyqtSlot()
     def _onOpen(self):
-        print('Open image!!')
+        # TODO make custom dialog:
+        # File selection widget + checkboxes/dropdown (rgb, monochrome, bool, categoric)
+        # Disable dropdown if .flo was selected, etc.
+        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*);;'
+        filename, _ = QFileDialog.getOpenFileName(self, 'Open File', '',
+            file_filters, None, QFileDialog.DontUseNativeDialog)
+        if filename:
+            if filename.endswith('.flo'):
+                #TODO load flow file
+                data = flowutils.floread(filename)
+                pass
+            else:
+                data = imutils.imread(filename)
+            display_settings = self.currentDisplaySettings()
+            # TODO need to relayout GUI
+            # check if we can replace the main widget, otherwise close and
+            # open a new inspector instance
+            
+            # TODO refactor this into separate function and reuse in c'tor
+            self._data = data
+            # self._is_categoric = is_categoric
+            self._visualized_data = None
+            self._visualized_pseudocolor = None
+            self._reset_viewer = True
+            # # Set up GUI
+            # self._prepareLayout()
+            # self._prepareActions()
+            # Analyze the given data (range, data type, channels, etc.)
+            self._queryStatistics()
+            # Now we're ready to visualize the data
+            self._updateDisplay()
+            # Restore display settings
+            self.restoreDisplaySettings(display_settings)
 
 
 def inspect(
