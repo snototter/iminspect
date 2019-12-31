@@ -8,6 +8,7 @@ A python utility package for image/matrix visualization.
 * `numpy`, obviously
 * `PyQt5` for the graphical user interface
 * `qimage2ndarray` to convert numpy ndarrays to Qt images
+* `vito` a lightweight vision tool package
 
 ## Example usage:
 ```python
@@ -24,30 +25,28 @@ inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), is_categoric=True)
 Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 ![Screenshot](https://github.com/snototter/iminspect/blob/master/iminspect.jpg?raw=true "iminspect GUI")
 
+
 ## UI Documentation
 * To inspect a data point/pixel, just move the mouse above it.
 * Zooming
   * `Ctrl+Wheel` to zoom in/out
   * `Ctrl+Shift+Wheel` to speed up zooming
-  * `Ctrl++`/`Ctrl+-` to zoom in/out
-  * `Ctrl+Shift++`/`Ctrl+Shift+-` to zoom in/out faster
+  * `Ctrl+{+|-}` to zoom in/out
+  * `Ctrl+Shift+{+|-}` to zoom in/out faster
 * Scrolling
-  * Move the scroll bars
-  * `Wheel` up/down
+  * `Wheel` scroll up/down
   * `Shift+Wheel` speeds up scrolling
-  * `Ctrl+Up`/`Ctrl+Down` to scroll up/down
-  * `Ctrl+Left`/`Ctrl+Right` to scroll left/right
+  * `Ctrl+{Up|Down|Left|Right}` to scroll using keyboard
   * `Ctrl+Shift+{Up|Down|Left|Right}` scrolls faster
 * Keyboard shortcuts
   * `Ctrl+Q` closes the inspection GUI
   * `Ctrl+O` opens an image/supported file format from disk
 
+
 ## Changelog
-* Upcoming `0.1.3`
-  * Usability:
-    * Keyboard shortcuts for zooming, scaling and scrolling
-    * TBD Load supported files from disk
-    * TBD Initial flow visualization
+* Upcoming `0.2.0`
+  * Major refactoring: moved image utils and colorizing code to separate [vito](https://github.com/snototter/vito) package
+  * Usability improvements: keyboard shortcuts for zooming, scaling and scrolling
 * `0.1.2`
   * Added tests for non-GUI functionality
   * Integrate github runners for test/build/deploy
@@ -62,7 +61,7 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
     * Adjust scrollbars when zooming multiple linked ImageCanvas
 * `0.1.0` - Initial public release
 
+
 ## Upcoming Changes
 * [ ] Support flow visualization<br/>2-layer flow, default to color wheel representation, port C++/MATLAB https://people.csail.mit.edu/celiu/OpticalFlow/
 * [ ] Add load from disk functionality
-* [ ] Use vito (for pseudocoloring, image manipulation tasks)

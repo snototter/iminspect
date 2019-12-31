@@ -10,7 +10,10 @@ from PyQt5.QtCore import Qt, QSize, QPoint, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
     QKeySequence
 
-from . import colormaps as colormaps
+from vito import imutils
+from vito import colormaps
+from vito import imvis
+
 from . import imgview as imgview
 from . import inputs as inputs
 
@@ -443,7 +446,7 @@ class Inspector(QMainWindow):
                     type(self).VIS_COLORMAPS[vis_selection]))
 
             if self._is_categoric:
-                pc = colormaps.pseudocolor(self._data_inverse_categories,
+                pc = imvis.pseudocolor(self._data_inverse_categories,
                     color_map=cm, limits=[0, len(self._data_categories)-1])
             else:
                 if self._checkbox_global_limits is not None \
@@ -454,7 +457,7 @@ class Inspector(QMainWindow):
                     if self._data.dtype == np.bool:
                         limits = [float(v) for v in limits]
                 self._colorbar.setLimits(limits)
-                pc = colormaps.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
+                pc = imvis.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
             self._visualized_pseudocolor = pc
             self._img_viewer.showImage(pc, adjust_size=self._reset_viewer)
             self._colorbar.setColormap(cm)
@@ -541,20 +544,6 @@ class Inspector(QMainWindow):
         print('Open image!!')
 
 
-def flipLayers(nparray):
-    """
-    Flip RGB to BGR image data (numpy ndarray).
-    Also accepts rgbA/bgrA and single channel images without crashing.
-    """
-    if len(nparray.shape) == 3:
-        if nparray.shape[2] == 4:
-            # We got xyzA, make zyxA
-            return nparray[..., [2, 1, 0, 3]]
-        else:
-            return nparray[:, :, ::-1]
-    return nparray
-
-
 def inspect(
         data, label='Data Inspection', flip_channels=False,
         is_categoric=False, display_settings=None):
@@ -577,7 +566,7 @@ def inspect(
              settings.
     """
     if flip_channels:
-        data = flipLayers(data)
+        data = imutils.flip_layers(data)
     app = QApplication([label])
     main_widget = Inspector(data, is_categoric, display_settings)
     main_widget.show()
