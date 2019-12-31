@@ -64,3 +64,8 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 ## Upcoming Changes
 * [ ] Support flow visualization<br/>2-layer flow, default to color wheel representation, port C++/MATLAB https://people.csail.mit.edu/celiu/OpticalFlow/
 * [ ] Add load from disk functionality
+
+
+## Known Issues
+* Incrementally in-/decreasing the zoom factor worked "good enough", thus I didn't bother in making it more complex/user-friendly.
+
