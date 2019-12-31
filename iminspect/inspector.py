@@ -4,6 +4,7 @@
 #TODO try to load depth data (16bit png)!
 
 import numpy as np
+from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
     QShortcut, QFileDialog, QDialog
@@ -179,9 +180,23 @@ class ColorBar(QWidget):
         qp.end()
 
 
+class InspectionDataType(Enum):
+    COLOR = 0
+    MONOCHROME = 1
+    BOOl = 2
+    CATEGORIC = 3
+    FLOW = 4
+
+
 class OpenInspectionFileDialog(QDialog):
     def __init__(self, parent=None):
         super(OpenInspectionFileDialog, self).__init__(parent)
+        self._filename = None
+        self._data_type = None
+        self._confirmed = False
+        self._prepareLayout()
+
+    def _prepareLayout(self):
         self.setWindowTitle('Open File')
         layout = QVBoxLayout()
         file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*);;'
@@ -190,11 +205,58 @@ class OpenInspectionFileDialog(QDialog):
             filters=file_filters, min_label_width=None, relative_base_path=None)
         self._file_widget.value_changed.connect(self._fileSelected)
         layout.addWidget(self._file_widget)
+
+        self._type_widget = inputs.DropDownSelectionWidget('Type:',
+            [(InspectionDataType.COLOR, 'Color/3 channels'),
+            (InspectionDataType.MONOCHROME, 'Monochrome/1 channel'),
+            (InspectionDataType.BOOl, 'Boolean Mask'),
+            (InspectionDataType.CATEGORIC, 'Label Image'),
+            (InspectionDataType.FLOW, 'Optical Flow')])
+        layout.addWidget(self._type_widget)
+
+        btn_layout = QHBoxLayout()
+        btn_cancel = QPushButton('Cancel')
+        btn_cancel.clicked.connect(self._onCancel)
+        btn_layout.addWidget(btn_cancel)
+
+        self._btn_confirm = QPushButton('Open')
+        self._btn_confirm.clicked.connect(self._onConfirm)
+        self._btn_confirm.setEnabled(False)
+        btn_layout.addWidget(self._btn_confirm)
+
+        layout.addLayout(btn_layout)
         self.setLayout(layout)
 
+    @pyqtSlot(object)
     def _fileSelected(self, filename):
-        print('TODO', filename)
+        self._filename = filename
+        if self._filename is not None and self._filename.endswith('.flo'):
+            self._type_widget.set_value(InspectionDataType.FLOW)
+            self._type_widget.setEnabled(False)
+        else:
+            self._type_widget.setEnabled(True)
+        self._btn_confirm.setEnabled(self._filename is not None)
 
+    @pyqtSlot()
+    def _onCancel(self):
+        self.reject()
+
+    @pyqtSlot()
+    def _onConfirm(self):
+        type_tuple = self._type_widget.get_input()
+        if type_tuple is None:
+            self._data_type = None
+        else:
+            self._data_type = type_tuple[0]
+        self._confirmed = True
+        self.accept()
+
+    def getSelection(self):
+        if self._confirmed:
+            return (self._filename, self._data_type)
+        return None
+#TODO pyqtslot decorators for all slots!
+#TODO refactor use InspectionDataType instead of flags in Inspector
 
 class Inspector(QMainWindow):
     """Opens GUI to inspect the given data"""
@@ -561,6 +623,12 @@ class Inspector(QMainWindow):
     def _onOpen(self):
         dialog = OpenInspectionFileDialog()
         dialog.exec()
+        res = dialog.getSelection()
+        if res is None:
+            print('TODO cancelled')
+            return
+        filename, data_type = res
+        print('TODO load:', filename, data_type)
         # # TODO make custom dialog:
         # # File selection widget + checkboxes/dropdown (rgb, monochrome, bool, categoric)
         # # Disable dropdown if .flo was selected, etc.
