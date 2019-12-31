@@ -62,7 +62,7 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 
 
 ## Upcoming Changes
-* [ ] Support flow visualization<br/>2-layer flow, default to color wheel representation, port C++/MATLAB https://people.csail.mit.edu/celiu/OpticalFlow/
+* [ ] Optical flow support
 * [ ] Add load from disk functionality
 
 
