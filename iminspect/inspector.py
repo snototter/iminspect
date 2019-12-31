@@ -409,7 +409,6 @@ class Inspector(QMainWindow):
         self._shortcut_scale_fit = QShortcut(QKeySequence('Ctrl+F'), self)
         self._shortcut_scale_fit.activated.connect(self._img_viewer.scaleToFitWindow)
 
-
     def _updateDisplay(self, *args):
         # TODO if raw ensure that num channels == 1 or 3, otherwise show dummy image/error message
         # Select which layer to show:
