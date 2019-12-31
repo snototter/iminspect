@@ -6,7 +6,7 @@
 import numpy as np
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
-    QShortcut, QFileDialog
+    QShortcut, QFileDialog, QDialog
 from PyQt5.QtCore import Qt, QSize, QPoint, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
     QKeySequence
@@ -177,6 +177,23 @@ class ColorBar(QWidget):
                 qp.drawText(pos, fmt(labels[i]))
         # We're done painting
         qp.end()
+
+
+class OpenInspectionFileDialog(QDialog):
+    def __init__(self, parent=None):
+        super(OpenInspectionFileDialog, self).__init__(parent)
+        self.setWindowTitle('Open File')
+        layout = QVBoxLayout()
+        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*);;'
+        self._file_widget = inputs.SelectDirEntryWidget('File:',
+            inputs.SelectDirEntryType.FILENAME_OPEN, parent=self,
+            filters=file_filters, min_label_width=None, relative_base_path=None)
+        self._file_widget.value_changed.connect(self._fileSelected)
+        layout.addWidget(self._file_widget)
+        self.setLayout(layout)
+
+    def _fileSelected(self, filename):
+        print('TODO', filename)
 
 
 class Inspector(QMainWindow):
@@ -542,39 +559,41 @@ class Inspector(QMainWindow):
 
     @pyqtSlot()
     def _onOpen(self):
-        # TODO make custom dialog:
-        # File selection widget + checkboxes/dropdown (rgb, monochrome, bool, categoric)
-        # Disable dropdown if .flo was selected, etc.
-        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*);;'
-        filename, _ = QFileDialog.getOpenFileName(self, 'Open File', '',
-            file_filters, None, QFileDialog.DontUseNativeDialog)
-        if filename:
-            if filename.endswith('.flo'):
-                #TODO load flow file
-                data = flowutils.floread(filename)
-                pass
-            else:
-                data = imutils.imread(filename)
-            display_settings = self.currentDisplaySettings()
-            # TODO need to relayout GUI
-            # check if we can replace the main widget, otherwise close and
-            # open a new inspector instance
+        dialog = OpenInspectionFileDialog()
+        dialog.exec()
+        # # TODO make custom dialog:
+        # # File selection widget + checkboxes/dropdown (rgb, monochrome, bool, categoric)
+        # # Disable dropdown if .flo was selected, etc.
+        # file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*);;'
+        # filename, _ = QFileDialog.getOpenFileName(self, 'Open File', '',
+        #     file_filters, None, QFileDialog.DontUseNativeDialog)
+        # if filename:
+        #     if filename.endswith('.flo'):
+        #         #TODO load flow file
+        #         data = flowutils.floread(filename)
+        #         pass
+        #     else:
+        #         data = imutils.imread(filename)
+        #     display_settings = self.currentDisplaySettings()
+        #     # TODO need to relayout GUI
+        #     # check if we can replace the main widget, otherwise close and
+        #     # open a new inspector instance
             
-            # TODO refactor this into separate function and reuse in c'tor
-            self._data = data
-            # self._is_categoric = is_categoric
-            self._visualized_data = None
-            self._visualized_pseudocolor = None
-            self._reset_viewer = True
-            # # Set up GUI
-            # self._prepareLayout()
-            # self._prepareActions()
-            # Analyze the given data (range, data type, channels, etc.)
-            self._queryStatistics()
-            # Now we're ready to visualize the data
-            self._updateDisplay()
-            # Restore display settings
-            self.restoreDisplaySettings(display_settings)
+        #     # TODO refactor this into separate function and reuse in c'tor
+        #     self._data = data
+        #     # self._is_categoric = is_categoric
+        #     self._visualized_data = None
+        #     self._visualized_pseudocolor = None
+        #     self._reset_viewer = True
+        #     # # Set up GUI
+        #     # self._prepareLayout()
+        #     # self._prepareActions()
+        #     # Analyze the given data (range, data type, channels, etc.)
+        #     self._queryStatistics()
+        #     # Now we're ready to visualize the data
+        #     self._updateDisplay()
+        #     # Restore display settings
+        #     self.restoreDisplaySettings(display_settings)
 
 
 def inspect(
