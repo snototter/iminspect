@@ -40,11 +40,10 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
   * `Ctrl+Shift+{Up|Down|Left|Right}` scrolls faster
 * Keyboard shortcuts
   * `Ctrl+Q` closes the inspection GUI
-  * `Ctrl+O` opens an image/supported file format from disk
 
 
 ## Changelog
-* Upcoming `0.2.0`
+* `0.2.0`
   * Major refactoring: moved image utils and colorizing code to separate [vito](https://github.com/snototter/vito) package
   * Usability improvements: keyboard shortcuts for zooming, scaling and scrolling
 * `0.1.2`
