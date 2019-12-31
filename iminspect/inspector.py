@@ -2,6 +2,7 @@
 # coding=utf-8
 """Inspect matrix/image data"""
 #TODO try to load depth data (16bit png)!
+#TODO refactor use InspectionDataType instead of flags in Inspector
 
 import numpy as np
 from enum import Enum
@@ -199,7 +200,7 @@ class OpenInspectionFileDialog(QDialog):
     def _prepareLayout(self):
         self.setWindowTitle('Open File')
         layout = QVBoxLayout()
-        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*);;'
+        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*)'
         self._file_widget = inputs.SelectDirEntryWidget('File:',
             inputs.SelectDirEntryType.FILENAME_OPEN, parent=self,
             filters=file_filters, min_label_width=None, relative_base_path=None)
@@ -255,8 +256,7 @@ class OpenInspectionFileDialog(QDialog):
         if self._confirmed:
             return (self._filename, self._data_type)
         return None
-#TODO pyqtslot decorators for all slots!
-#TODO refactor use InspectionDataType instead of flags in Inspector
+
 
 class Inspector(QMainWindow):
     """Opens GUI to inspect the given data"""
@@ -454,7 +454,7 @@ class Inspector(QMainWindow):
         self.resize(QSize(1280, 720))
 
     def _prepareActions(self):
-        # TODO WIP: Open image from disk
+        # Open file
         self._shortcut_open = QShortcut(QKeySequence('Ctrl+O'), self)
         self._shortcut_open.activated.connect(self._onOpen)
         # Close window
@@ -627,28 +627,25 @@ class Inspector(QMainWindow):
         dialog.exec()
         res = dialog.getSelection()
         if res is None:
-            print('TODO cancelled')
             return
         filename, data_type = res
-        print('TODO load:', filename, data_type)
-        # # TODO make custom dialog:
-        # # File selection widget + checkboxes/dropdown (rgb, monochrome, bool, categoric)
-        # # Disable dropdown if .flo was selected, etc.
-        # file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*);;'
-        # filename, _ = QFileDialog.getOpenFileName(self, 'Open File', '',
-        #     file_filters, None, QFileDialog.DontUseNativeDialog)
-        # if filename:
-        #     if filename.endswith('.flo'):
-        #         #TODO load flow file
-        #         data = flowutils.floread(filename)
-        #         pass
-        #     else:
-        #         data = imutils.imread(filename)
-        #     display_settings = self.currentDisplaySettings()
-        #     # TODO need to relayout GUI
-        #     # check if we can replace the main widget, otherwise close and
-        #     # open a new inspector instance
-            
+        if data_type == InspectionDataType.FLOW:
+            data = flowutils.floread(filename)
+        else:
+            im_mode = {
+                InspectionDataType.COLOR: 'RGB',
+                InspectionDataType.MONOCHROME: 'L',
+                InspectionDataType.CATEGORIC: 'L',
+                InspectionDataType.BOOl: 'L'
+            }
+            data = imutils.imread(filename, mode=im_mode[data_type])
+            if data_type == InspectionDataType.BOOl:
+                data = data.astype(np.bool)
+            #TODO check what to do with 16bit depth images!
+            print('TODO data type of loaded image: ', data.dtype)
+            # TODO need to relayout GUI, see 
+            # https://stackoverflow.com/questions/10416582/replacing-layout-on-a-qwidget-with-another-layout
+
         #     # TODO refactor this into separate function and reuse in c'tor
         #     self._data = data
         #     # self._is_categoric = is_categoric

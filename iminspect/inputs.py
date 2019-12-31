@@ -376,7 +376,7 @@ class SelectDirEntryWidget(InputWidget):
 
 class RoiSelectWidget(InputWidget):
     def __init__(self, label, roi=None, parent=None, min_label_width=None):
-        super(type(self), self).__init__(parent)
+        super(RoiSelectWidget, self).__init__(parent)
         layout = QHBoxLayout()
         lbl = QLabel(label)
         if min_label_width is not None:
@@ -434,7 +434,6 @@ class RoiSelectWidget(InputWidget):
             img_np = np.asarray(Image.open(filename).convert('RGB'))
 
             # Show modal dialog
-            # FIXME adjust import to changed file structure!
             from imgview import RectSelectionDialog
             dlg = RectSelectionDialog(self)
             dlg.rectSelected.connect(self.__rect_selected)
