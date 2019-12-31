@@ -7,7 +7,7 @@ A Qt-based image viewer which supports zooming and scrolling.
 from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QScrollArea,\
     QHBoxLayout, QVBoxLayout, QDialog
-from PyQt5.QtCore import pyqtSignal, Qt, QSize, QPointF, QPoint, QRect
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QSize, QPointF, QPoint, QRect
 from PyQt5.QtGui import QPainter, QPixmap, QCursor, QBrush, QColor, QPen
 import qimage2ndarray
 
@@ -219,6 +219,7 @@ class ImageViewer(QScrollArea):
         self._viewer_type = viewer_type
         self._prepareLayout(**kwargs)
 
+    @pyqtSlot(tuple)
     def _emitRectSelected(self, rect):
         self.rectSelected.emit(rect)
 
@@ -278,9 +279,11 @@ class ImageViewer(QScrollArea):
         """Returns the currently applied image scale factor."""
         return self._img_scale
 
+    @pyqtSlot(QPointF)
     def mouseMovedHandler(self, pixmap_pos):
         self.mouseMoved.emit(pixmap_pos)
 
+    @pyqtSlot(int, int)
     def sliderChanged(self, new_value, orientation):
         bar = self._scoll_bars[orientation]
         delta = new_value - bar.value()
@@ -295,6 +298,7 @@ class ImageViewer(QScrollArea):
         if others:
             self._linked_viewers.extend(others)
 
+    @pyqtSlot(int)
     def zoom(self, delta, notify_linked=True):
         """Scale the displayed image. Zoom in if delta > 0.
         Usually to be called with mouse wheel delta values, thus
@@ -318,6 +322,7 @@ class ImageViewer(QScrollArea):
             self.scroll(delta_widget.y()*120/self.verticalScrollBar().singleStep(), Qt.Vertical, notify_linked=True)
         # TODO emit mouse moved if cursor hovers over the image (pixel position may have changed)
 
+    @pyqtSlot(int, int)
     def scroll(self, delta, orientation, notify_linked=True):
         """Slot for scrollRequest signal of image canvas."""
         steps = -delta / 120

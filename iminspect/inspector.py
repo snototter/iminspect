@@ -8,7 +8,7 @@ from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
     QShortcut, QFileDialog, QDialog
-from PyQt5.QtCore import Qt, QSize, QPoint, pyqtSlot
+from PyQt5.QtCore import Qt, QSize, QPoint, QPointF, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
     QKeySequence
 
@@ -490,7 +490,8 @@ class Inspector(QMainWindow):
         self._shortcut_scale_fit = QShortcut(QKeySequence('Ctrl+F'), self)
         self._shortcut_scale_fit.activated.connect(self._img_viewer.scaleToFitWindow)
 
-    def _updateDisplay(self, *args):
+    @pyqtSlot()
+    def _updateDisplay(self):
         # TODO if raw ensure that num channels == 1 or 3, otherwise show dummy image/error message
         # Select which layer to show:
         if self._is_single_channel:
@@ -611,6 +612,7 @@ class Inspector(QMainWindow):
         s += '</table>'
         return s
 
+    @pyqtSlot(QPointF)
     def _mouseMoved(self, image_pos):
         """Invoked whenever the mouse position changed."""
         q = self._queryData(image_pos.x(), image_pos.y())
