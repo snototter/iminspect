@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QShortcut, QDialog
 from PyQt5.QtCore import Qt, QSize, QPoint, QPointF, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
-    QKeySequence, QPixmap, QImage
+    QKeySequence, QPixmap
 
 from vito import imutils
 from vito import colormaps
@@ -524,7 +524,7 @@ class Inspector(QMainWindow):
         # prepend the "raw" option) for single channel. Default to turbo for optical flow.
         # Otherwise, just visualize the raw data by default.
         self._visualization_dropdown = inputs.DropDownSelectionWidget('Visualization:', vis_options,
-            initial_selected_index=len(Inspector.VIS_COLORMAPS) if self._is_single_channel \
+            initial_selected_index=len(Inspector.VIS_COLORMAPS) if self._is_single_channel
                 else (len(Inspector.VIS_COLORMAPS)-1 if self._data_type == DataType.FLOW else 0))
         self._visualization_dropdown.value_changed.connect(self._updateDisplay)
         input_layout.addWidget(self._visualization_dropdown)

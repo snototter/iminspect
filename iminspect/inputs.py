@@ -444,8 +444,7 @@ class RoiSelectWidget(InputWidget):
             dlg.rectSelected.connect(self.__rect_selected)
             dlg.showImage(img_np)
             dlg.setRectangle(self.get_input())
-            dlg.exec() #TODO replace by open and connect to finished!
-
+            dlg.exec()
 
 class InputDemoApplication(QMainWindow):
     """Demo, showing what you can do with custom inputs"""
