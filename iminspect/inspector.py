@@ -421,7 +421,8 @@ class Inspector(QMainWindow):
         settings = {
             'wsize': self.size(),
             'screenpos': self.mapToGlobal(QPoint(0, 0)),
-            'dd:vis': self._visualization_dropdown.get_input()[0]
+            'dd:vis': self._visualization_dropdown.get_input()[0],
+            'data_type': self._data_type
         }
         if not self._is_single_channel:
             settings['dd:layer'] = self._layer_dropdown.get_input()[0]
@@ -432,19 +433,18 @@ class Inspector(QMainWindow):
     def restoreDisplaySettings(self, settings):
         if settings is None:
             return
-        #TODO/FIXME for each visualization param: check if it is applicable! (e.g. moving from monochrome to RGB)
-        #TODO/FIXME and check if the param exists
-        # Restore customized UI settings
-        # self._visualization_dropdown.set_value(settings['dd:vis'])
-        # if not self._is_single_channel:
-        #     self._layer_dropdown.set_value(settings['dd:layer'])
-        #     self._checkbox_global_limits.set_value(settings['cb:globlim'])
-        # # Restore window position/dimension
-        # self.resize(settings['wsize'])
-        # # Note that restoring the position doesn't always work (issues with
-        # # windows that are placed partially outside the screen)
-        # self.move(settings['screenpos'])
-        # # Restore zoom/translation settings
+        # Restore customized UI settings (only if data type didn't change)
+        if self._data_type == settings['data_type']:
+            self._visualization_dropdown.set_value(settings['dd:vis'])
+            if not self._is_single_channel:
+                self._layer_dropdown.set_value(settings['dd:layer'])
+                self._checkbox_global_limits.set_value(settings['cb:globlim'])
+        # Restore window position/dimension
+        self.resize(settings['wsize'])
+        # Note that restoring the position doesn't always work (issues with
+        # windows that are placed partially outside the screen)
+        self.move(settings['screenpos'])
+        # Restore zoom/translation settings
         self._img_viewer.restoreDisplaySettings(settings)
         self._updateDisplay()
 
