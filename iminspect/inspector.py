@@ -693,7 +693,6 @@ class Inspector(QMainWindow):
                     limits = [np.min(self._visualized_data[:]), np.max(self._visualized_data[:])]
                     if self._data.dtype is np.dtype('bool'):
                         limits = [float(v) for v in limits]
-                #TODO if we (incorrectly) load RGB as boolean mask, limits = [1,1]; hovering will show True whereas pseudocolor will show False...
                 self._colorbar.setLimits(limits)
                 pc = imvis.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
             self._visualized_pseudocolor = pc
@@ -815,11 +814,12 @@ class Inspector(QMainWindow):
             error_dialog = QErrorMessage()
             error_dialog.setWindowTitle('Error loading "{:s}"'.format(DataType.toStr(data_type)))
             error_dialog.showMessage('Cannot load "{:s}" as "{:s}":\n{:s}'.format(
-                filename, 
+                filename,
                 DataType.toStr(data_type),
                 str(e)
             ))
             error_dialog.exec_()
+
 
 def inspect(
         data,
