@@ -17,7 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from iminspect.inspector import inspect, DataType
 
 from vito import imutils
-from vito import flow
+from vito import flowutils
 
 if __name__ == "__main__":
     # Visualize standard RGB image
@@ -52,5 +52,5 @@ if __name__ == "__main__":
     # inspect(depth)
     
     # Inspect optical flow
-    f = flow.floread('color_wheel.flo')
-    inspect(f)
+    flow = flowutils.floread('color_wheel.flo')
+    inspect(flow)

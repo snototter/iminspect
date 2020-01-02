@@ -4,17 +4,18 @@
 
 import numpy as np
 from enum import Enum
+import qimage2ndarray
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
     QShortcut, QDialog
 from PyQt5.QtCore import Qt, QSize, QPoint, QPointF, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
-    QKeySequence
+    QKeySequence, QPixmap, QImage
 
 from vito import imutils
 from vito import colormaps
 from vito import imvis
-from vito import flow as flowutils
+from vito import flowutils
 
 from . import imgview as imgview
 from . import inputs as inputs
@@ -80,6 +81,7 @@ class ColorBar(QWidget):
         self.setMinimumWidth(90)
         self._colormap = None
         self._limits = None
+        self._show_flow_wheel = False
         self._is_boolean = False
         self._categories = None
 
@@ -97,9 +99,12 @@ class ColorBar(QWidget):
     def setColormap(self, colormap):
         self._colormap = colormap
 
+    def setFlowWheel(self, show_wheel):
+        self._show_flow_wheel = show_wheel
+
     def paintEvent(self, event):
-        if self._colormap is None or \
-               (not self._is_boolean and self._categories is None and self._limits is None):
+        if not self._show_flow_wheel and (self._colormap is None
+                or (not self._is_boolean and self._categories is None and self._limits is None)):
             return
         size = self.size()
         qp = QPainter()
@@ -154,6 +159,25 @@ class ColorBar(QWidget):
             lpos = [label_pos[int(i)] for i in selected_idx]
             for i in range(num_labels):
                 qp.drawText(lpos[i], fmti(labels[i]))
+        elif self._show_flow_wheel:
+            # Draw the flow color wheel, centered on the widget
+            center = QPointF(size.width() / 2, size.height() / 2)
+            diameter = int(min(size.width(), size.height()) - 2 * self._bar_padding)
+            radius = diameter / 2
+            # Create optical flow that will be visualized as color wheel
+            coords = np.linspace(-1, 1, diameter)
+            xv, yv = np.meshgrid(coords, coords)
+            flow = np.dstack((xv, yv))
+            colorized = flowutils.colorize_flow(flow)
+            # Create an alpha mask to draw a circle
+            alpha_mask = np.zeros((diameter, diameter), dtype=np.uint8)
+            where = np.sqrt(np.square(xv) + np.square(yv)) <= 1.0
+            alpha_mask[where] = 255
+            colorized = np.dstack((colorized, alpha_mask))
+            # Draw the color wheel
+            qimage = qimage2ndarray.array2qimage(colorized)
+            qpixmap = QPixmap.fromImage(qimage)
+            qp.drawPixmap(center.x() - radius, center.y() - radius, qpixmap)
         else:
             # Draw color gradients
             num_gradient_steps = min(size.height(), 256)
@@ -640,8 +664,8 @@ class Inspector(QMainWindow):
             if not is_single_channel and self._data_type == DataType.FLOW:
                 self._visualized_pseudocolor = flowutils.colorize_flow(self._visualized_data)
                 self._img_viewer.showImage(self._visualized_pseudocolor)
-                #TODO show color wheel as colorbar!
-                self._colorbar.setVisible(False)
+                self._colorbar.setFlowWheel(True)
+                self._colorbar.setVisible(True)
             else:
                 self._img_viewer.showImage(self._visualized_data, adjust_size=self._reset_viewer)
                 self._colorbar.setVisible(False)
@@ -666,6 +690,7 @@ class Inspector(QMainWindow):
             self._img_viewer.showImage(pc, adjust_size=self._reset_viewer)
             self._colorbar.setColormap(cm)
             self._colorbar.setVisible(True)
+            self._colorbar.setFlowWheel(False)
             self._colorbar.update()
         self._reset_viewer = False
 
