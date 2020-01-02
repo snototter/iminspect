@@ -342,6 +342,9 @@ class SelectDirEntryWidget(InputWidget):
 
         self.setLayout(layout)
 
+    def open_dialog(self):
+        self._btn.click()
+
     def get_input(self):
         return self._selection
 
@@ -439,7 +442,7 @@ class RoiSelectWidget(InputWidget):
             dlg.rectSelected.connect(self.__rect_selected)
             dlg.showImage(img_np)
             dlg.setRectangle(self.get_input())
-            dlg.exec()
+            dlg.exec() #TODO replace by open and connect to finished!
 
 
 class InputDemoApplication(QMainWindow):

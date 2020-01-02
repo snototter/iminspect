@@ -280,6 +280,10 @@ class OpenInspectionFileDialog(QDialog):
         layout.addLayout(btn_layout)
         self.setLayout(layout)
 
+    def open(self):
+        super(OpenInspectionFileDialog, self).open()
+        self._file_widget.open_dialog()
+
     @pyqtSlot(object)
     def _fileSelected(self, filename):
         self._filename = filename
@@ -310,6 +314,7 @@ class OpenInspectionFileDialog(QDialog):
         return None
 
 
+#TODO handle optical flow
 class Inspector(QMainWindow):
     """Opens GUI to inspect the given data"""
 
@@ -324,6 +329,7 @@ class Inspector(QMainWindow):
         super(Inspector, self).__init__()
         self._initial_window_size = initial_window_size
         self._shortcuts = list()
+        self._open_file_dialog = None
         # All other internal fields are declared and set in inspectData:
         self.inspectData(data, data_type, display_settings)
 
@@ -456,7 +462,10 @@ class Inspector(QMainWindow):
 
         # Let user select a single channel if multi-channel input is provided
         if not self._is_single_channel:
-            dd_options = [(-1, 'All')] + [(c, 'Layer {:d}'.format(c)) for c in range(self._data.shape[2])]
+            if self._data_type == DataType.FLOW and self._data.shape[2] == 2:
+                dd_options = [(-1, 'All'), (0, 'Horizontal'), (1, 'Vertical')]
+            else:
+                dd_options = [(-1, 'All')] + [(c, 'Layer {:d}'.format(c)) for c in range(self._data.shape[2])]
             self._layer_dropdown = inputs.DropDownSelectionWidget('Select layer:', dd_options)
             self._layer_dropdown.value_changed.connect(self._updateDisplay)
             input_layout.addWidget(self._layer_dropdown)
@@ -475,9 +484,10 @@ class Inspector(QMainWindow):
             [(i, 'Pseudocolor {:s}'.format(Inspector.VIS_COLORMAPS[i]))
                 for i in range(1, len(Inspector.VIS_COLORMAPS))]
         # Select viridis colormap by default (note missing "-1", because we
-        # prepend the "raw" option)
+        # prepend the "raw" option) for single channel and optical flow
         self._visualization_dropdown = inputs.DropDownSelectionWidget('Visualization:', vis_options,
-            initial_selected_index=len(Inspector.VIS_COLORMAPS) if self._is_single_channel else 0)
+            initial_selected_index=len(Inspector.VIS_COLORMAPS) if self._is_single_channel \
+                or self._data_type == DataType.FLOW else 0)
         self._visualization_dropdown.value_changed.connect(self._updateDisplay)
         input_layout.addWidget(self._visualization_dropdown)
 
@@ -608,15 +618,20 @@ class Inspector(QMainWindow):
         if is_single_channel:
             self._visualization_dropdown.setEnabled(True)
         else:
-            self._visualization_dropdown.select_index(0)
             self._visualization_dropdown.setEnabled(False)
 
         # Select visualization mode
         vis_selection = self._visualization_dropdown.get_input()[0]
         if vis_selection == Inspector.VIS_RAW or not is_single_channel:
-            self._img_viewer.showImage(self._visualized_data, adjust_size=self._reset_viewer)
-            self._colorbar.setVisible(False)
-            self._visualized_pseudocolor = None
+            if not is_single_channel and self._data_type == DataType.FLOW:
+                self._visualized_pseudocolor = flowutils.colorize_flow(self._visualized_data)
+                self._img_viewer.showImage(self._visualized_pseudocolor)
+                #TODO show color wheel as colorbar!
+                self._colorbar.setVisible(False)
+            else:
+                self._img_viewer.showImage(self._visualized_data, adjust_size=self._reset_viewer)
+                self._colorbar.setVisible(False)
+                self._visualized_pseudocolor = None
         else:
             cm = colormaps.by_name(Inspector.VIS_COLORMAPS[vis_selection])
 
@@ -680,7 +695,8 @@ class Inspector(QMainWindow):
         the data point at the cursor position. Requires result of _queryDataLocation
         as input.
         """
-        s = query['pos'] + ', ' + ('Category' if self._data_type == DataType.CATEGORIC else 'Raw data')\
+        s = query['pos'] + ', ' + ('Category' if self._data_type == DataType.CATEGORIC
+            else ('Flow' if self._data_type == DataType.FLOW else 'Raw data'))\
             + ': ' + query['rawstr']
         if query['currlayer'] is not None:
             s += ', Current layer: ' + query['currlayer']
@@ -694,8 +710,9 @@ class Inspector(QMainWindow):
         as input.
         """
         s = '<table><tr><td>Position:</td><td>' + query['pos'] + '</td></tr>'
-        s += '<tr><td>' + ('Category' if self._data_type == DataType.CATEGORIC else 'Raw') + ':</td><td>'\
-            + query['rawstr'] + '</td></tr>'
+        s += '<tr><td>' + ('Category' if self._data_type == DataType.CATEGORIC
+            else ('Flow' if self._data_type == DataType.FLOW else 'Raw data')) \
+            + ':</td><td>' + query['rawstr'] + '</td></tr>'
         if query['currlayer'] is not None:
             s += '<tr><td>Layer:</td><td>' + query['currlayer'] + '</td></tr>'
         if query['pseudocol'] is not None:
@@ -717,9 +734,14 @@ class Inspector(QMainWindow):
 
     @pyqtSlot()
     def _onOpen(self):
-        dialog = OpenInspectionFileDialog(self._data_type)
-        dialog.exec()
-        res = dialog.getSelection()
+        self._open_file_dialog = OpenInspectionFileDialog(
+            data_type=self._data_type, parent=self)
+        self._open_file_dialog.finished.connect(self._onOpenFinished)
+        self._open_file_dialog.open()
+
+    @pyqtSlot()
+    def _onOpenFinished(self):
+        res = self._open_file_dialog.getSelection()
         if res is None:
             return
         filename, data_type = res

@@ -17,6 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from iminspect.inspector import inspect, DataType
 
 from vito import imutils
+from vito import flow
 
 if __name__ == "__main__":
     # Visualize standard RGB image
@@ -46,6 +47,10 @@ if __name__ == "__main__":
     # cats = (weights / 25).astype(np.int16) - 7
     # _, display_settings = inspect(cats, data_type=DataType.CATEGORIC, label='Inspect image with 11 labels', display_settings=display_settings)
 
-    # Inspect a depth image
-    depth = imutils.imread('depth.png')
-    inspect(depth, label='Depth Image')
+    # # Inspect a depth image
+    # depth = imutils.imread('depth.png')
+    # inspect(depth, label='Depth Image')
+    
+    # Inspect optical flow
+    f = flow.floread('color_wheel.flo')
+    inspect(f, label='Optical Flow')
