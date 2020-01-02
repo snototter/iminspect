@@ -43,27 +43,25 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 
 
 ## Changelog
+* Upcoming `1.0.0`
+  * Major code refactoring: use data type enum instead of various flags (this breaks previous inspect() calls).
+  * Optical flow support.
 * `0.2.0`
-  * Major refactoring: moved image utils and colorizing code to separate [vito](https://github.com/snototter/vito) package
-  * Usability improvements: keyboard shortcuts for zooming, scaling and scrolling
+  * Major refactoring: moved image utils and colorizing code to separate [vito](https://github.com/snototter/vito) package.
+  * Usability improvements: keyboard shortcuts for zooming, scaling and scrolling.
 * `0.1.2`
-  * Added tests for non-GUI functionality
-  * Integrate github runners for test/build/deploy
-  * Fix definition for colormap gray
+  * Added tests for non-GUI functionality.
+  * Integrate github runners for test/build/deploy.
+  * Fix definition for colormap gray.
 * `0.1.1`
   * Additional features:
-    * ImageCanvas supports ROI selection (useful for custom input widgets)
+    * ImageCanvas supports ROI selection (useful for custom input widgets).
   * Refactoring:
-    * Clean up imports
-    * Make pylint/flake8 happier
+    * Clean up imports.
+    * Make pylint/flake8 happier.
   * Fixes:
-    * Adjust scrollbars when zooming multiple linked ImageCanvas
-* `0.1.0` - Initial public release
-
-
-## Upcoming Changes
-* [ ] Optical flow support
-* [ ] Add load from disk functionality
+    * Adjust scrollbars when zooming multiple linked ImageCanvas.
+* `0.1.0` - Initial public release.
 
 
 ## Known Issues

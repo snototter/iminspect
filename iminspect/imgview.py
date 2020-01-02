@@ -340,8 +340,9 @@ class ImageViewer(QScrollArea):
         self._img_np = img.copy()
         self._canvas.loadPixmap(QPixmap.fromImage(qimage))
 
-        # Ensure that image has a minimum size of about 32x32 px
-        self._min_img_scale = min(32.0/img.shape[0], 32.0/img.shape[1])
+        # Ensure that image has a minimum size of about 32x32 px (unless it is
+        # actually smaller)
+        self._min_img_scale = min(1.0, 32.0/img.shape[0], 32.0/img.shape[1])
 
         if self._img_np is None:
             self._canvas.setVisible(True)
@@ -366,6 +367,10 @@ class ImageViewer(QScrollArea):
         self._img_scale = w1 / w2 if a2 >= a1 else h1 / h2
         self.paintCanvas()
         # TODO emit mouse moved if cursor hovers over the image (pixel position may have changed)
+
+    def setScale(self, scale):
+        self._img_scale = scale
+        self.paintCanvas()
 
     def paintCanvas(self):
         if self._img_np is None:

@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Inspect matrix/image data"""
-#TODO try to load depth data (16bit png)!
-#TODO refactor use InspectionDataType instead of flags in Inspector
 
 import numpy as np
 from enum import Enum
@@ -181,12 +179,62 @@ class ColorBar(QWidget):
         qp.end()
 
 
-class InspectionDataType(Enum):
+class DataType(Enum):
     COLOR = 0
     MONOCHROME = 1
-    BOOl = 2
+    BOOL = 2
     CATEGORIC = 3
     FLOW = 4
+    DEPTH = 5
+
+    @staticmethod
+    def toStr(dt):
+        """Human-readable string representation of DataType enum."""
+        if dt == DataType.COLOR:
+            return 'color'
+        elif dt == DataType.MONOCHROME:
+            return 'monochrome'
+        elif dt == DataType.BOOL:
+            return 'mask'
+        elif dt == DataType.CATEGORIC:
+            return 'labels'
+        elif dt == DataType.FLOW:
+            return 'flow'
+        elif dt == DataType.DEPTH:
+            return 'depth'
+        else:
+            raise ValueError('Invalid DataType')
+
+    @staticmethod
+    def fromData(npdata):
+        """Make a best guess on the proper data type given the numpy ndarray
+        input npdata. In particular, we consider npdata.ndim and dtype:
+        * HxW or HxWx1
+            * data.dtype is bool: DataType.BOOL
+            * data.dtype in {uint8, float32, float64}: DataType.MONOCHROME
+            * data.dtype in {uint16, int32}: DataType.DEPTH
+            * else: DataType.CATEGORIC
+        * HxWx2: DataType.FLOW
+        * HxWx3: DataType.COLOR
+        """
+        if npdata.ndim < 3 or (npdata.ndim == 3 and npdata.shape[2] == 1):
+            if npdata.dtype is np.dtype('bool'):
+                return DataType.BOOL 
+            elif npdata.dtype in [np.dtype('uint8'), np.dtype('float32'), np.dtype('float64')]:
+                return DataType.MONOCHROME
+            elif npdata.dtype in [np.dtype('uint16'), np.dtype('int32')]:
+                return DataType.DEPTH
+            else:
+                return DataType.CATEGORIC
+        elif npdata.ndim == 3:
+            if npdata.shape[2] == 2:
+                return DataType.FLOW
+            elif npdata.shape[2] == 3:
+                return DataType.COLOR
+            else:
+                raise ValueError('Input data with %d channels is not supported' % npdata.shape[2])
+        else:
+            raise ValueError('Input data with ndim > 3 (i.e. %d) is not supported!' % npdata.ndim)
 
 
 class OpenInspectionFileDialog(QDialog):
@@ -208,11 +256,12 @@ class OpenInspectionFileDialog(QDialog):
         layout.addWidget(self._file_widget)
 
         self._type_widget = inputs.DropDownSelectionWidget('Type:',
-            [(InspectionDataType.COLOR, 'Color/3 channels'),
-            (InspectionDataType.MONOCHROME, 'Monochrome/1 channel'),
-            (InspectionDataType.BOOl, 'Boolean Mask'),
-            (InspectionDataType.CATEGORIC, 'Label Image'),
-            (InspectionDataType.FLOW, 'Optical Flow')])
+            [(DataType.COLOR, 'Color/3 channels'),
+            (DataType.MONOCHROME, 'Monochrome/1 channel'),
+            (DataType.BOOL, 'Boolean Mask'),
+            (DataType.CATEGORIC, 'Label Image'),
+            (DataType.DEPTH, 'Depth Image'),
+            (DataType.FLOW, 'Optical Flow')])
         layout.addWidget(self._type_widget)
 
         btn_layout = QHBoxLayout()
@@ -232,7 +281,7 @@ class OpenInspectionFileDialog(QDialog):
     def _fileSelected(self, filename):
         self._filename = filename
         if self._filename is not None and self._filename.endswith('.flo'):
-            self._type_widget.set_value(InspectionDataType.FLOW)
+            self._type_widget.set_value(DataType.FLOW)
             self._type_widget.setEnabled(False)
         else:
             self._type_widget.setEnabled(True)
@@ -263,30 +312,40 @@ class Inspector(QMainWindow):
 
     # Identifiers for visualization drop down
     VIS_RAW = -1
-    VIS_GRAY = -2
-    VIS_COLORMAPS = ['autumn', 'bone', 'cold', 'disparity',
-        'earth', 'hot', 'hsv', 'inferno', 'jet', 'magma', 'parula',
-        'pastel', 'plasma', 'sepia', 'temperature', 'thermal', 'viridis']
+    # Ensure that grayscale is the second option
+    VIS_COLORMAPS = ['Grayscale'] + [cmn for cmn in colormaps.colormap_names if cmn.lower() != 'grayscale']
 
-    def __init__(self, data, is_categoric, display_settings=None):
+    def __init__(
+            self, data, data_type, display_settings=None,
+            initial_window_size=QSize(1280, 720)):
         super(Inspector, self).__init__()
+        self._initial_window_size = initial_window_size
+        self._shortcuts = list()
+        # All other internal fields are declared and set in inspectData:
+        self.inspectData(data, data_type, display_settings)
+
+    def inspectData(self, data, data_type, display_settings=None):
         self._data = data                    # The raw data
-        self._is_categoric = is_categoric    # Whether the data is categoric (a label image) or not
+        self._data_type = DataType.fromData(data) if data_type is None else data_type
+
         self._visualized_data = None         # Currently visualized data (e.g. a single channel)
         self._visualized_pseudocolor = None  # Currently visualized pseudocolorized data
-        self._reset_viewer = True            # Flag to reset (adjust size and translation) the image viewer
+        self._reset_viewer = True            # Whether the image viewer should be reset (adjust size and translation)
+
+        self._is_single_channel = (data.ndim < 3) or (data.shape[2] == 1)
 
         # Set up GUI
-        self._prepareLayout()
+        self._resetLayout()
         self._prepareActions()
         # Analyze the given data (range, data type, channels, etc.)
-        self._queryStatistics()
+        self._prepareDataStatistics()
         # Now we're ready to visualize the data
         self._updateDisplay()
         # Restore display settings
         self.restoreDisplaySettings(display_settings)
 
-    def _queryStatistics(self):
+
+    def _prepareDataStatistics(self):
         """Analyzes the internal _data field (range, data type, channels,
         etc.) and sets member variables accordingly.
         Additionally, information will be printed to stdout and shown on
@@ -296,30 +355,34 @@ class Inspector(QMainWindow):
 
         stdout_str = list()
         stdout_str.append('##################################################\nData inspection:\n')
-        stdout_str.append('Data type: {}'.format(self._data.dtype))
+        stdout_str.append('Data type: {} ({})'.format(
+            self._data.dtype, DataType.toStr(self._data_type)))
         stdout_str.append('Shape:     {}\n'.format(self._data.shape))
-        #
+
         lbl_txt = '<table cellpadding="5"><tr><th colspan="2">Information</th></tr>'
-        lbl_txt += '<tr><td>Type: {}</td><td>Shape: {}</td></tr>'.format(self._data.dtype, self._data.shape)
+        lbl_txt += '<tr><td>Type: {} ({})</td><td>Shape: {}</td></tr>'.format(
+            self._data.dtype, DataType.toStr(self._data_type), self._data.shape)
 
         # Select format function to display data in status bar/tooltip
-        if self._data.dtype == np.bool:
+        if self._data_type == DataType.BOOL:
             self._data_limits = [float(v) for v in self._data_limits]
             self.__fmt_fx = fmtb
             self._colorbar.setBoolean(True)
-        elif self._is_categoric:
+        elif self._data_type == DataType.CATEGORIC:
             self.__fmt_fx = fmti
             self._data_categories, ic = np.unique(self._data, return_inverse=True)
             self._data_inverse_categories = ic.reshape(self._data.shape)
             self._colorbar.setCategories(self._data_categories)
         else:
             self.__fmt_fx = best_format_fx(self._data_limits)
+            #TODO nice-to-have: if dtype is flow: name layers horizontal and vertical, U and V
 
-        if self._is_categoric:
+        # Prepare QLabel and stdout message:
+        if self._data_type == DataType.BOOL:
+            lbl_txt += '<tr><td colspan="2">Binary mask.</td></tr>'
+        elif self._data_type == DataType.CATEGORIC:
             stdout_str.append('This is a categoric/label image with {:d} categories'.format(len(self._data_categories)))
             lbl_txt += '<tr><td colspan="2">Label image, {:d} classes.</td></tr>'.format(len(self._data_categories))
-        elif self._data.dtype == np.bool:
-            lbl_txt += '<tr><td colspan="2">Binary mask.</td></tr>'
         else:
             global_mean = np.mean(self._data[:])
             global_std = np.std(self._data[:])
@@ -370,56 +433,66 @@ class Inspector(QMainWindow):
     def restoreDisplaySettings(self, settings):
         if settings is None:
             return
+        #TODO/FIXME for each visualization param: check if it is applicable! (e.g. moving from monochrome to RGB)
+        #TODO/FIXME and check if the param exists
         # Restore customized UI settings
-        self._visualization_dropdown.set_value(settings['dd:vis'])
-        if not self._is_single_channel:
-            self._layer_dropdown.set_value(settings['dd:layer'])
-            self._checkbox_global_limits.set_value(settings['cb:globlim'])
-        # Restore window position/dimension
-        self.resize(settings['wsize'])
-        # Note that restoring the position doesn't always work (issues with
-        # windows that are placed partially outside the screen)
-        self.move(settings['screenpos'])
-        # Restore zoom/translation settings
+        # self._visualization_dropdown.set_value(settings['dd:vis'])
+        # if not self._is_single_channel:
+        #     self._layer_dropdown.set_value(settings['dd:layer'])
+        #     self._checkbox_global_limits.set_value(settings['cb:globlim'])
+        # # Restore window position/dimension
+        # self.resize(settings['wsize'])
+        # # Note that restoring the position doesn't always work (issues with
+        # # windows that are placed partially outside the screen)
+        # self.move(settings['screenpos'])
+        # # Restore zoom/translation settings
         self._img_viewer.restoreDisplaySettings(settings)
         self._updateDisplay()
 
-    def _prepareLayout(self):
+    def _resetLayout(self):
         self._main_widget = QWidget()
         input_layout = QVBoxLayout()
 
         # Let user select a single channel if multi-channel input is provided
-        self._is_single_channel = (len(self._data.shape) == 2) or (self._data.shape[2] == 1)
         if not self._is_single_channel:
             dd_options = [(-1, 'All')] + [(c, 'Layer {:d}'.format(c)) for c in range(self._data.shape[2])]
             self._layer_dropdown = inputs.DropDownSelectionWidget('Select layer:', dd_options)
             self._layer_dropdown.value_changed.connect(self._updateDisplay)
             input_layout.addWidget(self._layer_dropdown)
 
-        if not self._is_single_channel and not self._is_categoric:
+        if self._is_single_channel or self._data_type == DataType.CATEGORIC:
+            self._checkbox_global_limits = None
+        else:
             self._checkbox_global_limits = inputs.CheckBoxWidget(
                 'Use same visualization limits for all channels:',
                 checkbox_left=False, is_checked=True)
             input_layout.addWidget(self._checkbox_global_limits)
             self._checkbox_global_limits.value_changed.connect(self._updateDisplay)
-        else:
-            self._checkbox_global_limits = None
 
         # Let user select the visualization method
-        vis_options = [(type(self).VIS_RAW, 'Raw data'), (type(self).VIS_GRAY, 'Grayscale')] + \
-            [(i, 'Pseudocolor {:s}'.format(
-                'HSV' if type(self).VIS_COLORMAPS[i] == 'hsv'
-                else type(self).VIS_COLORMAPS[i].capitalize()))
-                for i in range(len(type(self).VIS_COLORMAPS))]
+        vis_options = [(Inspector.VIS_RAW, 'Raw data'), \
+            (0, 'Grayscale')] + \
+            [(i, 'Pseudocolor {:s}'.format(Inspector.VIS_COLORMAPS[i]))
+                for i in range(1, len(Inspector.VIS_COLORMAPS))]
+        # Select viridis colormap by default (note missing "-1", because we
+        # prepend the "raw" option)
         self._visualization_dropdown = inputs.DropDownSelectionWidget('Visualization:', vis_options,
-            initial_selected_index=0 if not self._is_single_channel else len(type(self).VIS_COLORMAPS) - 1 + 2)
+            initial_selected_index=len(Inspector.VIS_COLORMAPS) if self._is_single_channel else 0)
         self._visualization_dropdown.value_changed.connect(self._updateDisplay)
         input_layout.addWidget(self._visualization_dropdown)
 
+        # Layout buttons horizontally
+        btn_layout = QHBoxLayout()
         # Button to allow user scaling the displayed image
-        btn_scale_to_fit = QPushButton('Scale image to fit')
+        btn_scale_to_fit = QPushButton('Scale to fit window')
         btn_scale_to_fit.clicked.connect(lambda: self._img_viewer.scaleToFitWindow())
-        input_layout.addWidget(btn_scale_to_fit)
+        btn_layout.addWidget(btn_scale_to_fit)
+
+        btn_scale_original = QPushButton('Original size')
+        btn_scale_original.clicked.connect(lambda: self._img_viewer.setScale(1.0))
+        btn_layout.addWidget(btn_scale_original)
+
+        input_layout.addLayout(btn_layout)
 
         # Label to show important image statistics/information
         self._data_label = QLabel()
@@ -450,45 +523,70 @@ class Inspector(QMainWindow):
         main_layout.addLayout(top_row_layout)
         main_layout.addLayout(img_layout)
         self._main_widget.setLayout(main_layout)
+        # TODO check if setCentralWidget replaces the layout correctly, otherwise
+        # look into replacing the layout: https://stackoverflow.com/a/10439207/400948
         self.setCentralWidget(self._main_widget)
-        self.resize(QSize(1280, 720))
+        self.resize(self._initial_window_size)
 
     def _prepareActions(self):
+        #TODO/FIXME need to redefine (unregister?) the shortcuts upon reset display
+        for sc in self._shortcuts:
+            sc.setEnabled(False)
+            sc.deleteLater()
+        self._shortcuts = list()
         # Open file
         self._shortcut_open = QShortcut(QKeySequence('Ctrl+O'), self)
         self._shortcut_open.activated.connect(self._onOpen)
+        self._shortcuts.append(self._shortcut_open)
         # Close window
         self._shortcut_exit = QShortcut(QKeySequence('Ctrl+Q'), self)
         self._shortcut_exit.activated.connect(QApplication.instance().quit)
+        self._shortcuts.append(self._shortcut_exit)
         # Zooming
         self._shortcut_zoom_in = QShortcut(QKeySequence('Ctrl++'), self)
         self._shortcut_zoom_in.activated.connect(lambda: self._img_viewer.zoom(120))
+        self._shortcuts.append(self._shortcut_zoom_in)
         self._shortcut_zoom_in_fast = QShortcut(QKeySequence('Ctrl+Shift++'), self)
         self._shortcut_zoom_in_fast.activated.connect(lambda: self._img_viewer.zoom(1200))
+        self._shortcuts.append(self._shortcut_zoom_in_fast)
         self._shortcut_zoom_out = QShortcut(QKeySequence('Ctrl+-'), self)
         self._shortcut_zoom_out.activated.connect(lambda: self._img_viewer.zoom(-120))
+        self._shortcuts.append(self._shortcut_zoom_out)
         self._shortcut_zoom_out_fast = QShortcut(QKeySequence('Ctrl+Shift+-'), self)
         self._shortcut_zoom_out_fast.activated.connect(lambda: self._img_viewer.zoom(-1200))
+        self._shortcuts.append(self._shortcut_zoom_out_fast)
         # Scrolling
         self._shortcut_scroll_up = QShortcut(QKeySequence('Ctrl+Up'), self)
         self._shortcut_scroll_up.activated.connect(lambda: self._img_viewer.scroll(120, Qt.Vertical))
+        self._shortcuts.append(self._shortcut_scroll_up)
         self._shortcut_scroll_up_fast = QShortcut(QKeySequence('Ctrl+Shift+Up'), self)
         self._shortcut_scroll_up_fast.activated.connect(lambda: self._img_viewer.scroll(1200, Qt.Vertical))
+        self._shortcuts.append(self._shortcut_scroll_up_fast)
         self._shortcut_scroll_down = QShortcut(QKeySequence('Ctrl+Down'), self)
         self._shortcut_scroll_down.activated.connect(lambda: self._img_viewer.scroll(-120, Qt.Vertical))
+        self._shortcuts.append(self._shortcut_scroll_down)
         self._shortcut_scroll_down_fast = QShortcut(QKeySequence('Ctrl+Shift+Down'), self)
         self._shortcut_scroll_down_fast.activated.connect(lambda: self._img_viewer.scroll(-1200, Qt.Vertical))
+        self._shortcuts.append(self._shortcut_scroll_down_fast)
         self._shortcut_scroll_left = QShortcut(QKeySequence('Ctrl+Left'), self)
         self._shortcut_scroll_left.activated.connect(lambda: self._img_viewer.scroll(120, Qt.Horizontal))
+        self._shortcuts.append(self._shortcut_scroll_left)
         self._shortcut_scroll_left_fast = QShortcut(QKeySequence('Ctrl+Shift+Left'), self)
         self._shortcut_scroll_left_fast.activated.connect(lambda: self._img_viewer.scroll(1200, Qt.Horizontal))
+        self._shortcuts.append(self._shortcut_scroll_left_fast)
         self._shortcut_scroll_right = QShortcut(QKeySequence('Ctrl+Right'), self)
         self._shortcut_scroll_right.activated.connect(lambda: self._img_viewer.scroll(-120, Qt.Horizontal))
+        self._shortcuts.append(self._shortcut_scroll_right)
         self._shortcut_scroll_right_fast = QShortcut(QKeySequence('Ctrl+Shift+Right'), self)
         self._shortcut_scroll_right_fast.activated.connect(lambda: self._img_viewer.scroll(-1200, Qt.Horizontal))
+        self._shortcuts.append(self._shortcut_scroll_right_fast)
         # Scale to fit window
         self._shortcut_scale_fit = QShortcut(QKeySequence('Ctrl+F'), self)
         self._shortcut_scale_fit.activated.connect(self._img_viewer.scaleToFitWindow)
+        self._shortcuts.append(self._shortcut_scale_fit)
+        self._shortcut_scale_original = QShortcut(QKeySequence('Ctrl+1'), self)
+        self._shortcut_scale_original.activated.connect(lambda: self._img_viewer.setScale(1.0))
+        self._shortcuts.append(self._shortcut_scale_original)
 
     @pyqtSlot()
     def _updateDisplay(self):
@@ -515,18 +613,14 @@ class Inspector(QMainWindow):
 
         # Select visualization mode
         vis_selection = self._visualization_dropdown.get_input()[0]
-        if vis_selection == type(self).VIS_RAW or not is_single_channel:
+        if vis_selection == Inspector.VIS_RAW or not is_single_channel:
             self._img_viewer.showImage(self._visualized_data, adjust_size=self._reset_viewer)
             self._colorbar.setVisible(False)
             self._visualized_pseudocolor = None
         else:
-            if vis_selection == type(self).VIS_GRAY:
-                cm = colormaps.colormap_gray
-            else:
-                cm = getattr(colormaps, 'colormap_{:s}_rgb'.format(
-                    type(self).VIS_COLORMAPS[vis_selection]))
+            cm = colormaps.by_name(Inspector.VIS_COLORMAPS[vis_selection])
 
-            if self._is_categoric:
+            if self._data_type == DataType.CATEGORIC:
                 pc = imvis.pseudocolor(self._data_inverse_categories,
                     color_map=cm, limits=[0, len(self._data_categories)-1])
             else:
@@ -535,7 +629,7 @@ class Inspector(QMainWindow):
                     limits = self._data_limits
                 else:
                     limits = [np.min(self._visualized_data[:]), np.max(self._visualized_data[:])]
-                    if self._data.dtype == np.bool:
+                    if self._data.dtype is np.dtype('bool'):
                         limits = [float(v) for v in limits]
                 self._colorbar.setLimits(limits)
                 pc = imvis.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
@@ -546,7 +640,7 @@ class Inspector(QMainWindow):
             self._colorbar.update()
         self._reset_viewer = False
 
-    def _queryData(self, px_x, px_y):
+    def _queryDataLocation(self, px_x, px_y):
         """Retrieves the image data at location (px_x, px_y)."""
         x = int(px_x)
         y = int(px_y)
@@ -583,10 +677,10 @@ class Inspector(QMainWindow):
 
     def _statusBarMessage(self, query):
         """Returns a message to be displayed upon the status bar showing
-        the data point at the cursor position. Requires result of _queryData as
-        input.
+        the data point at the cursor position. Requires result of _queryDataLocation
+        as input.
         """
-        s = query['pos'] + ', ' + ('Category' if self._is_categoric else 'Raw data')\
+        s = query['pos'] + ', ' + ('Category' if self._data_type == DataType.CATEGORIC else 'Raw data')\
             + ': ' + query['rawstr']
         if query['currlayer'] is not None:
             s += ', Current layer: ' + query['currlayer']
@@ -596,11 +690,11 @@ class Inspector(QMainWindow):
 
     def _tooltipMessage(self, query):
         """Returns a HTML formatted tooltip message showing the
-        data point at the cursor position. Requires result of _queryData as
-        input.
+        data point at the cursor position. Requires result of _queryDataLocation
+        as input.
         """
         s = '<table><tr><td>Position:</td><td>' + query['pos'] + '</td></tr>'
-        s += '<tr><td>' + ('Category' if self._is_categoric else 'Raw') + ':</td><td>'\
+        s += '<tr><td>' + ('Category' if self._data_type == DataType.CATEGORIC else 'Raw') + ':</td><td>'\
             + query['rawstr'] + '</td></tr>'
         if query['currlayer'] is not None:
             s += '<tr><td>Layer:</td><td>' + query['currlayer'] + '</td></tr>'
@@ -608,14 +702,14 @@ class Inspector(QMainWindow):
             s += '<tr><td>Colormap:</td><td> ' + query['pseudocol'] + '</td></tr>'
         scale = self._img_viewer.currentImageScale()
         if scale != 1.0:
-            s += '<tr><td>Scale:</td><td>{:.2f} %</td></tr>'.format(scale*100)
+            s += '<tr><td>Scale:</td><td>' + ('&lt; 1' if scale < 0.01 else '{:d}'.format(int(scale*100))) + ' %</td></tr>'
         s += '</table>'
         return s
 
     @pyqtSlot(QPointF)
     def _mouseMoved(self, image_pos):
         """Invoked whenever the mouse position changed."""
-        q = self._queryData(image_pos.x(), image_pos.y())
+        q = self._queryDataLocation(image_pos.x(), image_pos.y())
         if q is None:
             return
         self._status_bar.showMessage(self._statusBarMessage(q))
@@ -629,54 +723,52 @@ class Inspector(QMainWindow):
         if res is None:
             return
         filename, data_type = res
-        if data_type == InspectionDataType.FLOW:
+        if data_type == DataType.FLOW:
             data = flowutils.floread(filename)
         else:
             im_mode = {
-                InspectionDataType.COLOR: 'RGB',
-                InspectionDataType.MONOCHROME: 'L',
-                InspectionDataType.CATEGORIC: 'L',
-                InspectionDataType.BOOl: 'L'
+                DataType.COLOR: 'RGB',
+                DataType.MONOCHROME: 'L',
+                DataType.CATEGORIC: 'I',
+                DataType.BOOL: 'L',
+                DataType.DEPTH: None
             }
             data = imutils.imread(filename, mode=im_mode[data_type])
-            if data_type == InspectionDataType.BOOl:
+            if data_type == DataType.BOOL:
                 data = data.astype(np.bool)
-            #TODO check what to do with 16bit depth images!
-            print('TODO data type of loaded image: ', data.dtype)
-            # TODO need to relayout GUI, see 
-            # https://stackoverflow.com/questions/10416582/replacing-layout-on-a-qwidget-with-another-layout
-
-        #     # TODO refactor this into separate function and reuse in c'tor
-        #     self._data = data
-        #     # self._is_categoric = is_categoric
-        #     self._visualized_data = None
-        #     self._visualized_pseudocolor = None
-        #     self._reset_viewer = True
-        #     # # Set up GUI
-        #     # self._prepareLayout()
-        #     # self._prepareActions()
-        #     # Analyze the given data (range, data type, channels, etc.)
-        #     self._queryStatistics()
-        #     # Now we're ready to visualize the data
-        #     self._updateDisplay()
-        #     # Restore display settings
-        #     self.restoreDisplaySettings(display_settings)
+        current_display = self.currentDisplaySettings()
+        self.inspectData(data, data_type, display_settings=current_display)
 
 
 def inspect(
-        data, label='Data Inspection', flip_channels=False,
-        is_categoric=False, display_settings=None):
+        data,
+        data_type=None,
+        flip_channels=False,
+        label='Data Inspection',
+        display_settings=None):
     """Opens a GUI to visualize the given image data.
 
     data:          numpy ndarray to be visualized.
-    label:         window title.
+    data_type:     One of the DataType enumeration or None.
+                   Useful if you want to show a label image - there's no (easy)
+                   way of automatically distinguish a monochrome image from
+                   a label image if you provide a uint8 input...
+                   If None, the "Inspector" will try to guess the data type from
+                   the input data.shape and data.dtype:
+                   * HxW or HxWx1
+                     * data.dtype is bool: DataType.BOOL
+                     * data.dtype in {uint8, float32, float64}: DataType.MONOCHROME
+                     * data.dtype in {uint16, int32}: DataType.DEPTH
+                     * else: DataType.CATEGORIC
+                   * HxWx2: DataType.FLOW
+                   * HxWx3: DataType.COLOR
+
+                   For example, if you have an int32 image you want to visualize
+                   as class labels, specify data_type=DataType.CATEGORIC. The
+                   inspector's guess would be depth data.
     flip_channels: this qt window works with RGB images, so flip_channels must
                    be set True if your data is BGR.
-    is_categoric:  I don't know a generic and elegant way of determining
-                   whether the input is categoric (i.e. a label image) or if
-                   you really wanted to display some integer data (e.g.
-                   disparities). Thus, set this flag if you want to display a
-                   label image.
+    label:         window title.
     display_settings: a dictionary of display settings in case you want to
                    restore the previous settings. The current settings are
                    returned by this function.
@@ -687,7 +779,7 @@ def inspect(
     if flip_channels:
         data = imutils.flip_layers(data)
     app = QApplication([label])
-    main_widget = Inspector(data, is_categoric, display_settings)
+    main_widget = Inspector(data, data_type, display_settings)
     main_widget.show()
     rc = app.exec_()
     # Query the viewer settings (in case the user wants to restore them for the

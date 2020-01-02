@@ -2,4 +2,4 @@ numpy
 Pillow
 PyQt5
 qimage2ndarray
-vito
+vito>=0.3.1
