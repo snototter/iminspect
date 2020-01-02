@@ -8,7 +8,7 @@ from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QScrollArea,\
     QHBoxLayout, QVBoxLayout, QDialog
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QSize, QPointF, QPoint, QRect
-from PyQt5.QtGui import QPainter, QPixmap, QCursor, QBrush, QColor, QPen, QImage
+from PyQt5.QtGui import QPainter, QPixmap, QCursor, QBrush, QColor, QPen
 import qimage2ndarray
 
 

@@ -9,7 +9,6 @@ This example script needs PIL (Pillow package) to load images from disk.
 import os
 import sys
 
-from PIL import Image
 import numpy as np
 
 # Extend the python path
@@ -50,7 +49,7 @@ if __name__ == "__main__":
     # Inspect a depth image
     depth = imutils.imread('depth.png')
     inspect(depth)
-    
+
     # Inspect optical flow
     flow = flowutils.floread('color_wheel.flo')
     inspect(flow)

@@ -446,6 +446,7 @@ class RoiSelectWidget(InputWidget):
             dlg.setRectangle(self.get_input())
             dlg.exec()
 
+
 class InputDemoApplication(QMainWindow):
     """Demo, showing what you can do with custom inputs"""
     def __init__(self):

@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Inspect matrix/image data"""
-#TODO load rgb as bool => wrong visualization
+#TODO ctrl+s(ave) flosave, imsave...
+#TODO Test saving: color, monochrome, 16bit, depth vs categoric, bool, flow
+#TODO implement above, then deploy
 import numpy as np
 from enum import Enum
 import qimage2ndarray
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
-    QShortcut, QDialog
+    QShortcut, QDialog, QErrorMessage
 from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
     QKeySequence, QPixmap
@@ -788,27 +790,36 @@ class Inspector(QMainWindow):
 
     @pyqtSlot()
     def _onOpenFinished(self):
-        self.setWindowTitle('FOOO')
         res = self._open_file_dialog.getSelection()
         if res is None:
             return
-        filename, data_type = res
-        if data_type == DataType.FLOW:
-            data = flowutils.floread(filename)
-        else:
-            im_mode = {
-                DataType.COLOR: 'RGB',
-                DataType.MONOCHROME: 'L',
-                DataType.CATEGORIC: 'I',
-                DataType.BOOL: 'L',
-                DataType.DEPTH: 'I'
-            }
-            data = imutils.imread(filename, mode=im_mode[data_type])
-            if data_type == DataType.BOOL:
-                data = data.astype(np.bool)
-        current_display = self.currentDisplaySettings()
-        self.inspectData(data, data_type, display_settings=current_display)
-
+        try:
+            filename, data_type = res
+            if data_type == DataType.FLOW:
+                data = flowutils.floread(filename)
+            else:
+                im_mode = {
+                    DataType.COLOR: 'RGB',
+                    DataType.MONOCHROME: 'L',
+                    DataType.CATEGORIC: 'I',
+                    DataType.BOOL: 'L',
+                    DataType.DEPTH: 'I'
+                }
+                data = imutils.imread(filename, mode=im_mode[data_type])
+                if data_type == DataType.BOOL:
+                    data = data.astype(np.bool)
+            self.setWindowTitle(Inspector.makeWindowTitle(self._window_title, data_type))
+            current_display = self.currentDisplaySettings()
+            self.inspectData(data, data_type, display_settings=current_display)
+        except Exception as e:
+            error_dialog = QErrorMessage()
+            error_dialog.setWindowTitle('Error loading "{:s}"'.format(DataType.toStr(data_type)))
+            error_dialog.showMessage('Cannot load "{:s}" as "{:s}":\n{:s}'.format(
+                filename, 
+                DataType.toStr(data_type),
+                str(e)
+            ))
+            error_dialog.exec_()
 
 def inspect(
         data,
