@@ -521,10 +521,11 @@ class Inspector(QMainWindow):
             [(i, 'Pseudocolor {:s}'.format(Inspector.VIS_COLORMAPS[i]))
                 for i in range(1, len(Inspector.VIS_COLORMAPS))]
         # Select viridis colormap by default (note missing "-1", because we
-        # prepend the "raw" option) for single channel and optical flow
+        # prepend the "raw" option) for single channel. Default to turbo for optical flow.
+        # Otherwise, just visualize the raw data by default.
         self._visualization_dropdown = inputs.DropDownSelectionWidget('Visualization:', vis_options,
             initial_selected_index=len(Inspector.VIS_COLORMAPS) if self._is_single_channel \
-                or self._data_type == DataType.FLOW else 0)
+                else (len(Inspector.VIS_COLORMAPS)-1 if self._data_type == DataType.FLOW else 0))
         self._visualization_dropdown.value_changed.connect(self._updateDisplay)
         input_layout.addWidget(self._visualization_dropdown)
 
@@ -666,6 +667,7 @@ class Inspector(QMainWindow):
                 self._img_viewer.showImage(self._visualized_pseudocolor)
                 self._colorbar.setFlowWheel(True)
                 self._colorbar.setVisible(True)
+                self._colorbar.update()
             else:
                 self._img_viewer.showImage(self._visualized_data, adjust_size=self._reset_viewer)
                 self._colorbar.setVisible(False)
@@ -689,8 +691,8 @@ class Inspector(QMainWindow):
             self._visualized_pseudocolor = pc
             self._img_viewer.showImage(pc, adjust_size=self._reset_viewer)
             self._colorbar.setColormap(cm)
-            self._colorbar.setVisible(True)
             self._colorbar.setFlowWheel(False)
+            self._colorbar.setVisible(True)
             self._colorbar.update()
         self._reset_viewer = False
 
