@@ -801,7 +801,7 @@ class Inspector(QMainWindow):
                 DataType.MONOCHROME: 'L',
                 DataType.CATEGORIC: 'I',
                 DataType.BOOL: 'L',
-                DataType.DEPTH: None
+                DataType.DEPTH: 'I'
             }
             data = imutils.imread(filename, mode=im_mode[data_type])
             if data_type == DataType.BOOL:
