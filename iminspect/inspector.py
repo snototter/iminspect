@@ -239,14 +239,14 @@ class DataType(Enum):
 
 
 class OpenInspectionFileDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, data_type=None, parent=None):
         super(OpenInspectionFileDialog, self).__init__(parent)
         self._filename = None
         self._data_type = None
         self._confirmed = False
-        self._prepareLayout()
+        self._prepareLayout(data_type)
 
-    def _prepareLayout(self):
+    def _prepareLayout(self, current_data_type):
         self.setWindowTitle('Open File')
         layout = QVBoxLayout()
         file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*)'
@@ -257,12 +257,14 @@ class OpenInspectionFileDialog(QDialog):
         layout.addWidget(self._file_widget)
 
         self._type_widget = inputs.DropDownSelectionWidget('Type:',
-            [(DataType.COLOR, 'Color/3 channels'),
-            (DataType.MONOCHROME, 'Monochrome/1 channel'),
+            [(DataType.COLOR, 'Color'),
+            (DataType.MONOCHROME, 'Monochrome'),
             (DataType.BOOL, 'Boolean Mask'),
-            (DataType.CATEGORIC, 'Label Image'),
-            (DataType.DEPTH, 'Depth Image'),
+            (DataType.CATEGORIC, 'Categories / Labels'),
+            (DataType.DEPTH, 'Depth'),
             (DataType.FLOW, 'Optical Flow')])
+        if current_data_type is not None:
+            self._type_widget.set_value(current_data_type)
         layout.addWidget(self._type_widget)
 
         btn_layout = QHBoxLayout()
@@ -715,7 +717,7 @@ class Inspector(QMainWindow):
 
     @pyqtSlot()
     def _onOpen(self):
-        dialog = OpenInspectionFileDialog()
+        dialog = OpenInspectionFileDialog(self._data_type)
         dialog.exec()
         res = dialog.getSelection()
         if res is None:
