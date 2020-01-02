@@ -864,5 +864,5 @@ def inspect(
 
 
 if __name__ == '__main__':
-    print('Please refer to the example application at ../examples/inspect_demo.py!')
+    print('Please refer to the example application at ../examples/demo.py!')
     print('If not included in your package, see https://github.com/snototter/iminspect')
