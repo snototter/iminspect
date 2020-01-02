@@ -8,7 +8,7 @@ import qimage2ndarray
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
     QShortcut, QDialog
-from PyQt5.QtCore import Qt, QSize, QPoint, QPointF, pyqtSlot
+from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
     QKeySequence, QPixmap
 
@@ -178,6 +178,11 @@ class ColorBar(QWidget):
             qimage = qimage2ndarray.array2qimage(colorized)
             qpixmap = QPixmap.fromImage(qimage)
             qp.drawPixmap(center.x() - radius, center.y() - radius, qpixmap)
+            # Label it
+            txt_height = int((size.height() - 2*self._bar_padding - diameter - 5) / 2)
+            if txt_height > 15:
+                qp.drawText(QRect(center.x() - radius, self._bar_padding, diameter, txt_height),
+                    Qt.AlignHCenter | Qt.AlignBottom, 'Flow\nColor Wheel')
         else:
             # Draw color gradients
             num_gradient_steps = min(size.height(), 256)
