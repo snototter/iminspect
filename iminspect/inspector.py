@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Inspect matrix/image data"""
+#TODO nice-to-have: if dtype is flow: name layers horizontal and vertical, U and V
 
 import numpy as np
 from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
-    QShortcut, QFileDialog, QDialog
+    QShortcut, QDialog
 from PyQt5.QtCore import Qt, QSize, QPoint, QPointF, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
     QKeySequence
@@ -219,7 +220,7 @@ class DataType(Enum):
         """
         if npdata.ndim < 3 or (npdata.ndim == 3 and npdata.shape[2] == 1):
             if npdata.dtype is np.dtype('bool'):
-                return DataType.BOOL 
+                return DataType.BOOL
             elif npdata.dtype in [np.dtype('uint8'), np.dtype('float32'), np.dtype('float64')]:
                 return DataType.MONOCHROME
             elif npdata.dtype in [np.dtype('uint16'), np.dtype('int32')]:
@@ -344,7 +345,6 @@ class Inspector(QMainWindow):
         # Restore display settings
         self.restoreDisplaySettings(display_settings)
 
-
     def _prepareDataStatistics(self):
         """Analyzes the internal _data field (range, data type, channels,
         etc.) and sets member variables accordingly.
@@ -375,7 +375,6 @@ class Inspector(QMainWindow):
             self._colorbar.setCategories(self._data_categories)
         else:
             self.__fmt_fx = best_format_fx(self._data_limits)
-            #TODO nice-to-have: if dtype is flow: name layers horizontal and vertical, U and V
 
         # Prepare QLabel and stdout message:
         if self._data_type == DataType.BOOL:
@@ -470,8 +469,7 @@ class Inspector(QMainWindow):
             self._checkbox_global_limits.value_changed.connect(self._updateDisplay)
 
         # Let user select the visualization method
-        vis_options = [(Inspector.VIS_RAW, 'Raw data'), \
-            (0, 'Grayscale')] + \
+        vis_options = [(Inspector.VIS_RAW, 'Raw data'), (0, 'Grayscale')] + \
             [(i, 'Pseudocolor {:s}'.format(Inspector.VIS_COLORMAPS[i]))
                 for i in range(1, len(Inspector.VIS_COLORMAPS))]
         # Select viridis colormap by default (note missing "-1", because we
@@ -591,7 +589,6 @@ class Inspector(QMainWindow):
 
     @pyqtSlot()
     def _updateDisplay(self):
-        # TODO if raw ensure that num channels == 1 or 3, otherwise show dummy image/error message
         # Select which layer to show:
         if self._is_single_channel:
             self._visualized_data = self._data
