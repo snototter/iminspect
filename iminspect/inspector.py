@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Inspect matrix/image data"""
-
+#TODO load rgb as bool => wrong visualization
 import numpy as np
 from enum import Enum
 import qimage2ndarray
@@ -691,6 +691,7 @@ class Inspector(QMainWindow):
                     limits = [np.min(self._visualized_data[:]), np.max(self._visualized_data[:])]
                     if self._data.dtype is np.dtype('bool'):
                         limits = [float(v) for v in limits]
+                #TODO if we (incorrectly) load RGB as boolean mask, limits = [1,1]; hovering will show True whereas pseudocolor will show False...
                 self._colorbar.setLimits(limits)
                 pc = imvis.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
             self._visualized_pseudocolor = pc
