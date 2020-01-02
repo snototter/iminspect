@@ -12,14 +12,14 @@ A python utility package for image/matrix visualization.
 
 ## Example usage:
 ```python
-from iminspect.inspector import inspect
+from iminspect.inspector import inspect, DataType
 import numpy as np
 
 # Show random noise image:
 inspect(np.random.rand(4096,4096) - 0.5)
 
 # Show as class labels:
-inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), is_categoric=True)
+inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), data_type=DataType.CATEGORIC)
 ```
 
 Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
@@ -46,7 +46,7 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 
 
 ## Changelog
-* Upcoming `1.0.0`
+* `1.0.0`
   * Major code refactoring: use data type enum instead of various flags (this breaks previous inspect() calls).
   * Optical flow support.
   * Load another file from disk (via `Ctrl+O`).
