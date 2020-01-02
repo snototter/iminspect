@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Inspect matrix/image data"""
-#TODO nice-to-have: if dtype is flow: name layers horizontal and vertical, U and V
 
 import numpy as np
 from enum import Enum
