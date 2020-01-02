@@ -252,7 +252,9 @@ class OpenInspectionFileDialog(QDialog):
         file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*)'
         self._file_widget = inputs.SelectDirEntryWidget('File:',
             inputs.SelectDirEntryType.FILENAME_OPEN, parent=self,
-            filters=file_filters, min_label_width=None, relative_base_path=None)
+            filters=file_filters,
+            initial_filter='' if current_data_type is None or current_data_type != DataType.FLOW else 'Optical Flow (*.flo)',
+            min_label_width=None, relative_base_path=None)
         self._file_widget.value_changed.connect(self._fileSelected)
         layout.addWidget(self._file_widget)
 
@@ -291,6 +293,9 @@ class OpenInspectionFileDialog(QDialog):
             self._type_widget.set_value(DataType.FLOW)
             self._type_widget.setEnabled(False)
         else:
+            # Change to an image type if flow was selected
+            if self._type_widget.get_input()[0] == DataType.FLOW:
+                self._type_widget.set_value(DataType.COLOR)
             self._type_widget.setEnabled(True)
         self._btn_confirm.setEnabled(self._filename is not None)
 
@@ -314,7 +319,6 @@ class OpenInspectionFileDialog(QDialog):
         return None
 
 
-#TODO handle optical flow
 class Inspector(QMainWindow):
     """Opens GUI to inspect the given data"""
 
@@ -323,11 +327,21 @@ class Inspector(QMainWindow):
     # Ensure that grayscale is the second option
     VIS_COLORMAPS = ['Grayscale'] + [cmn for cmn in colormaps.colormap_names if cmn.lower() != 'grayscale']
 
+    @staticmethod
+    def makeWindowTitle(label, data_type):
+        if data_type is None:
+            raise ValueError('Input data_type cannot be None!')
+        if label is None:
+            return 'Data Inspection [{}]'.format(DataType.toStr(data_type))
+        else:
+            return label
+
     def __init__(
             self, data, data_type, display_settings=None,
-            initial_window_size=QSize(1280, 720)):
+            initial_window_size=QSize(1280, 720), window_title=None):
         super(Inspector, self).__init__()
         self._initial_window_size = initial_window_size
+        self._window_title = window_title
         self._shortcuts = list()
         self._open_file_dialog = None
         # All other internal fields are declared and set in inspectData:
@@ -535,6 +549,7 @@ class Inspector(QMainWindow):
         self._main_widget.setLayout(main_layout)
         self.setCentralWidget(self._main_widget)
         self.resize(self._initial_window_size)
+        self.setWindowTitle(Inspector.makeWindowTitle(self._window_title, self._data_type))
 
     def _prepareActions(self):
         # Disable and delete previously registered shortcuts (otherwise, they
@@ -741,6 +756,7 @@ class Inspector(QMainWindow):
 
     @pyqtSlot()
     def _onOpenFinished(self):
+        self.setWindowTitle('FOOO')
         res = self._open_file_dialog.getSelection()
         if res is None:
             return
@@ -766,8 +782,9 @@ def inspect(
         data,
         data_type=None,
         flip_channels=False,
-        label='Data Inspection',
-        display_settings=None):
+        label=None,
+        display_settings=None,
+        initial_window_size=QSize(1280, 720)):
     """Opens a GUI to visualize the given image data.
 
     data:          numpy ndarray to be visualized.
@@ -790,18 +807,28 @@ def inspect(
                    inspector's guess would be depth data.
     flip_channels: this qt window works with RGB images, so flip_channels must
                    be set True if your data is BGR.
-    label:         window title.
+    label:         optional window title.
     display_settings: a dictionary of display settings in case you want to
                    restore the previous settings. The current settings are
                    returned by this function.
+    initial_window_size: Resize the window.
 
     returns: the window's exit code and a dictionary of currently used display
              settings.
     """
     if flip_channels:
         data = imutils.flip_layers(data)
-    app = QApplication([label])
-    main_widget = Inspector(data, data_type, display_settings)
+    # If window title is not provided, make one (indicating the data type).
+    if data_type is None:
+        app_label = Inspector.makeWindowTitle(label, DataType.fromData(data))
+    else:
+        app_label = Inspector.makeWindowTitle(label, data_type)
+
+    app = QApplication([app_label])
+    main_widget = Inspector(data, data_type=data_type,
+        display_settings=display_settings,
+        initial_window_size=initial_window_size,
+        window_title=label)
     main_widget.show()
     rc = app.exec_()
     # Query the viewer settings (in case the user wants to restore them for the

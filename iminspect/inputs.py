@@ -305,11 +305,12 @@ class SelectDirEntryWidget(InputWidget):
 
     def __init__(
             self, label, selection_type, parent=None, filters="All Files (*.*)",
-            min_label_width=None, relative_base_path=None):
+            initial_filter='', min_label_width=None, relative_base_path=None):
         """
         :param label: Text to display
         :param selection_type: See SelectDirEntryType
         :param filters: File filters for QFileDialog
+        :param initial_filter: Initial file filter for QFileDialog
         :param min_label_width: Min. width of the label (for nicer alignment)
         :param relative_base_path: If set, get_input() returns a path relative
                 to this relative_base_path
@@ -317,6 +318,7 @@ class SelectDirEntryWidget(InputWidget):
         super(SelectDirEntryWidget, self).__init__(parent)
         self._selection = None
         self._filters = filters
+        self._initial_filter = initial_filter
         self._relative_base_path = relative_base_path
 
         layout = QHBoxLayout()
@@ -363,17 +365,17 @@ class SelectDirEntryWidget(InputWidget):
     def __select_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select a folder",
                 '' if self._selection is None else self._selection,
-                QFileDialog.ShowDirsOnly, QFileDialog.DontUseNativeDialog)
+                QFileDialog.ShowDirsOnly | QFileDialog.DontUseNativeDialog)
         self.__set_selection(folder)
 
     def __select_open_file(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Select file", "", self._filters,
-            None, QFileDialog.DontUseNativeDialog)
+            self._initial_filter, QFileDialog.DontUseNativeDialog)
         self.__set_selection(filename)
 
     def __select_save_file(self):
         filename, _ = QFileDialog.getSaveFileName(self, "Select file", "", self._filters,
-            None, QFileDialog.DontUseNativeDialog)
+            self._initial_filter, QFileDialog.DontUseNativeDialog)
         self.__set_selection(filename)
 
 
