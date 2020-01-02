@@ -523,13 +523,14 @@ class Inspector(QMainWindow):
         main_layout.addLayout(top_row_layout)
         main_layout.addLayout(img_layout)
         self._main_widget.setLayout(main_layout)
-        # TODO check if setCentralWidget replaces the layout correctly, otherwise
-        # look into replacing the layout: https://stackoverflow.com/a/10439207/400948
         self.setCentralWidget(self._main_widget)
         self.resize(self._initial_window_size)
 
     def _prepareActions(self):
-        #TODO/FIXME need to redefine (unregister?) the shortcuts upon reset display
+        # Disable and delete previously registered shortcuts (otherwise, they
+        # would be silently ignored once you replace the central widget - which
+        # happens as soon as you display another image with the same Inspector
+        # instance).
         for sc in self._shortcuts:
             sc.setEnabled(False)
             sc.deleteLater()
