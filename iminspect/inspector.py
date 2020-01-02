@@ -78,7 +78,7 @@ class ColorBar(QWidget):
         self._num_labels = 10
 
         self.setMinimumHeight(self._min_height)
-        self.setMinimumWidth(90)
+        self.setMinimumWidth(100)
         self._colormap = None
         self._limits = None
         self._show_flow_wheel = False
