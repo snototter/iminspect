@@ -49,6 +49,7 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 * Upcoming `1.0.0`
   * Major code refactoring: use data type enum instead of various flags (this breaks previous inspect() calls).
   * Optical flow support.
+  * Load another file from disk (via `Ctrl+O`).
 * `0.2.0`
   * Major refactoring: moved image utils and colorizing code to separate [vito](https://github.com/snototter/vito) package.
   * Usability improvements: keyboard shortcuts for zooming, scaling and scrolling.
