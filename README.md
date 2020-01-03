@@ -25,6 +25,9 @@ inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), data_type=DataType.C
 Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 ![Screenshot](https://github.com/snototter/iminspect/blob/master/iminspect.jpg?raw=true "iminspect GUI")
 
+<br/><br/>Exemplary screenshot (visualizing a mask image):<br/>
+![Screenshot](https://github.com/snototter/iminspect/blob/master/iminspect-mask.jpg?raw=true "iminspect GUI")
+
 
 ## UI Documentation
 * To inspect a data point/pixel, just move the mouse above it.
@@ -47,9 +50,10 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 
 
 ## Changelog
-* Upcoming `1.1.0`
-  * Support saving visualization or raw input data to disk.
+* `1.1.0`
+  * Support saving visualization and raw input data to disk.
   * Added shorthand wrapper to `inspect()` call.
+  * UI improvements/layout changes.
 * `1.0.0`
   * Major code refactoring: use data type enum instead of various flags (this breaks previous inspect() calls).
   * Optical flow support.
@@ -75,8 +79,3 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 
 ## Known Issues
 * Incrementally in-/decreasing the zoom factor worked "good enough", thus I didn't bother in making it more complex/user-friendly.
-
-
-## Planned Extensions
-* Support saving (raw vs visualization) - thoroughly check PIL's capabilities (e.g. 16 bit depth PNGs or int32 label images).
-* Add input widgets for current shortcut-only commands (e.g. file I/O). Update screenshots, too.
