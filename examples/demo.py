@@ -54,3 +54,7 @@ if __name__ == "__main__":
     # # Inspect optical flow
     # flow = flowutils.floread('color_wheel.flo')
     # inspect(flow)
+
+    # Another boolean mask
+    mask = imutils.imread('space-invader.png', mode='L').astype(np.bool)
+    inspect(mask)

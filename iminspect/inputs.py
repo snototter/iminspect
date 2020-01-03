@@ -359,7 +359,6 @@ class SelectDirEntryWidget(InputWidget):
         else:
             self._selection = None
             self._selection_label.setText(type(self).EMPTY_SELECTION)
-
         self._emit_value_change()
 
     def __select_folder(self):

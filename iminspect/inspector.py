@@ -2,7 +2,6 @@
 # coding=utf-8
 """Inspect matrix/image data"""
 
-#TODO ctrl+s(ave) flosave, imsave...
 #TODO Test saving: color, monochrome, 16bit, depth vs categoric, bool, flow
 #TODO implement above, then deploy
 
@@ -12,7 +11,7 @@ from enum import Enum
 import qimage2ndarray
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
-    QShortcut, QDialog, QMessageBox, QStatusBar
+    QShortcut, QDialog, QMessageBox, QToolButton
 from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
     QKeySequence, QPixmap, QIcon
@@ -331,6 +330,8 @@ class OpenInspectionFileDialog(QDialog):
                 self._type_widget.set_value(DataType.COLOR)
             self._type_widget.setEnabled(True)
         self._btn_confirm.setEnabled(self._filename is not None)
+        if self._filename is None:
+            self._onCancel()
 
     @pyqtSlot()
     def _onCancel(self):
@@ -446,6 +447,8 @@ class SaveInspectionFileDialog(QDialog):
     def _fileSelected(self, filename):
         self._filename = filename
         self._btn_confirm.setEnabled(self._filename is not None)
+        if self._filename is None:
+            self._onCancel()
 
     @pyqtSlot()
     def _onCancel(self):
@@ -468,22 +471,25 @@ class SaveInspectionFileDialog(QDialog):
 
 
 class ZoomWidget(QWidget):
+    """Provides two clickable icons allowing the user to request the standard
+    scalings "zoom-best-fit" and "zoom-original"."""
+    # Signal if zoom-best-fit is clicked
     zoomBestFitRequest = pyqtSignal()
+    # Signal if zoom-original is clicked
     zoomOriginalSizeRequest = pyqtSignal()
-    #TODO use QToolButton instead of QPushButton
 
-    def __init__(self, parent=None):
+    def __init__(self, central_widget, parent=None):
         super(ZoomWidget, self).__init__(parent)
         layout = QHBoxLayout()
         layout.addWidget(QLabel('Zoom:'))
-        btn_fit = QPushButton()
+        btn_fit = QToolButton(central_widget)
         btn_fit.setIcon(QIcon.fromTheme('zoom-fit-best'))
         btn_fit.setIconSize(QSize(20, 20))
         btn_fit.setToolTip('Zoom to fit visible area (Ctrl+F)')
         btn_fit.clicked.connect(self.zoomBestFitRequest)
         layout.addWidget(btn_fit)
 
-        btn_original = QPushButton()
+        btn_original = QToolButton(central_widget)
         btn_original.setIcon(QIcon.fromTheme('zoom-original'))
         btn_original.setIconSize(QSize(20, 20))
         btn_original.setToolTip('Zoom to original size (Ctrl+1)')
@@ -492,14 +498,6 @@ class ZoomWidget(QWidget):
         # Important: remove margins!
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
-
-    def paintEvent(self, event):
-        #TODO remove (used to debug unwanted margins/padding)
-        qp = QPainter()
-        qp.begin(self)
-        qp.fillRect(self.rect(), QBrush(Qt.red, Qt.SolidPattern))
-        qp.end()
-        super(ZoomWidget, self).paintEvent(event)
 
 
 class Inspector(QMainWindow):
@@ -528,6 +526,7 @@ class Inspector(QMainWindow):
         self._shortcuts = list()
         self._open_file_dialog = None
         self._save_file_dialog = None
+        self._zoom_widget = None
         # All other internal fields are declared and set in inspectData:
         self.inspectData(data, data_type, display_settings)
 
@@ -666,25 +665,11 @@ class Inspector(QMainWindow):
         file_layout.addWidget(btn_open)
 
         btn_save = QPushButton()
-        btn_save.setIcon(QIcon.fromTheme('document-save'))
+        btn_save.setIcon(QIcon.fromTheme('document-save-as'))
         btn_save.setIconSize(QSize(24, 24))
         btn_save.setToolTip('Save as...')
         btn_save.clicked.connect(self._onSave)
         file_layout.addWidget(btn_save)
-        # file_layout.addWidget(inputs.HLine())
-
-        #TODO rm
-        # btn_scale_to_fit = QPushButton()
-        # btn_scale_to_fit.setIcon(QIcon.fromTheme('zoom-fit-best'))
-        # btn_scale_to_fit.setToolTip('Zoom to fit visible area (Ctrl+F)')
-        # btn_scale_to_fit.clicked.connect(lambda: self._img_viewer.scaleToFitWindow())
-        # file_layout.addWidget(btn_scale_to_fit)
-
-        # btn_scale_original = QPushButton()
-        # btn_scale_original.setIcon(QIcon.fromTheme('zoom-original'))
-        # btn_scale_original.setToolTip('Zoom to original size (Ctrl+1)')
-        # btn_scale_original.clicked.connect(lambda: self._img_viewer.setScale(1.0))
-        # file_layout.addWidget(btn_scale_original)
 
         input_layout = QVBoxLayout()
         # Let user select a single channel if multi-channel input is provided
@@ -705,7 +690,8 @@ class Inspector(QMainWindow):
                 'Same visualization limits for all channels:',
                 checkbox_left=False, is_checked=True)
             self._checkbox_global_limits.value_changed.connect(self._updateDisplay)
-            self._checkbox_global_limits.setToolTip('If checked, visualization uses min/max from data[:] instead of data[:,:, channel]')
+            self._checkbox_global_limits.setToolTip(
+                'If checked, visualization uses min/max from data[:] instead of data[:,:, channel]')
             input_layout.addWidget(self._checkbox_global_limits)
 
         # Let user select the visualization method
@@ -750,19 +736,6 @@ class Inspector(QMainWindow):
         # Set font of tool tips
         QToolTip.setFont(QFont('SansSerif', 10))
 
-        # Grab a convenience handle to the status bar
-        #self._status_bar = self.statusBar()
-        self._status_bar = QStatusBar()
-        self.setStatusBar(self._status_bar)
-        zoom_widget = ZoomWidget()
-        # p=zoom_widget.palette()
-        # p.setColor(zoom_widget.backgroundRole(), Qt.red)
-        # zoom_widget.setPalette(p)
-        zoom_widget.zoomBestFitRequest.connect(lambda: self._img_viewer.scaleToFitWindow())
-        zoom_widget.zoomOriginalSizeRequest.connect(lambda: self._img_viewer.setScale(1.0))
-
-        self._status_bar.addPermanentWidget(zoom_widget)
-
         # Label to show important image statistics/information
         self._data_label = QLabel()
         self._data_label.setFrameShape(QFrame.Panel)
@@ -783,14 +756,27 @@ class Inspector(QMainWindow):
         main_layout = QVBoxLayout()
         main_layout.addLayout(top_row_layout)
         main_layout.addLayout(img_layout)
-        # Important to prevent ugly gaps between status bar and image canvas:
-        main_layout.setContentsMargins(0, 0, 0, 0)
 
         self._main_widget = QWidget()
         self._main_widget.setLayout(main_layout)
         self.setCentralWidget(self._main_widget)
+
         self.resize(self._initial_window_size)
         self.setWindowTitle(Inspector.makeWindowTitle(self._window_title, self._data_type))
+
+        # Grab a convenience handle to the status bar
+        self._status_bar = self.statusBar()
+        if self._zoom_widget is None:
+            # Ensure that the zoom widget is only added once (otherwise, would
+            # be added once for every newly opened image)
+            self._zoom_widget = ZoomWidget(self.centralWidget())
+            self._zoom_widget.zoomBestFitRequest.connect(lambda: self._img_viewer.scaleToFitWindow())
+            self._zoom_widget.zoomOriginalSizeRequest.connect(lambda: self._img_viewer.setScale(1.0))
+            self._status_bar.addPermanentWidget(self._zoom_widget)
+
+        # Important to prevent ugly gaps between status bar and image canvas:
+        margins = main_layout.contentsMargins()
+        main_layout.setContentsMargins(margins.left(), margins.top(), margins.right(), 0)
 
     def _prepareActions(self):
         # Disable and delete previously registered shortcuts (otherwise, they
@@ -1062,7 +1048,7 @@ class Inspector(QMainWindow):
             raise NotImplementedError('Save as %d type is not yet supported' % save_type)
 
         try:
-            # TODO implement | test various combinations, invalid user input, etc.
+            # TODO test various combinations, invalid user input, etc.
             # Successfully tested:
             # * Save RGB ==> RGB
             # * Save Depth ==> Depth (16bit)
