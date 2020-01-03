@@ -43,6 +43,7 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 * Keyboard shortcuts
   * `Ctrl+Q` closes the inspection GUI
   * `Ctrl+O` shows dialog to open another file
+  * `Ctrl+S` shows dialog to save input or visualization data
 
 
 ## Changelog
@@ -78,4 +79,4 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 
 ## Planned Extensions
 * Support saving (raw vs visualization) - thoroughly check PIL's capabilities (e.g. 16 bit depth PNGs or int32 label images).
-* Add input widgets for shortcut-only commands (e.g. file I/O).
+* Add input widgets for current shortcut-only commands (e.g. file I/O). Update screenshots, too.

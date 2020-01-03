@@ -620,18 +620,38 @@ class Inspector(QMainWindow):
         self._updateDisplay()
 
     def _resetLayout(self):
-        self._main_widget = QWidget()
+        # Theme icons, see
+        # https://specifications.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
+        file_layout = QVBoxLayout()
+        btn_open = QPushButton()
+        btn_open.setIcon(QIcon.fromTheme('document-open'))
+        btn_open.setToolTip('Open File')
+        btn_open.setMinimumSize(QSize(20, 20))
+        btn_open.clicked.connect(self._onOpen)
+        file_layout.addWidget(btn_open)
 
-        #TODO hboxlayout I/O buttons, vline, current layout
-        # main_layout = QHBoxLayout()
-        # btn = QPushButton()
-        # icon = QPixmap("path to icon")
-        # btn.setIcon(QIcon(icon))
-        # # btn.setIconSize(icon.rect().size())
-        # btn.setIconSize(QSize(32, 32))
+        btn_save = QPushButton()
+        btn_save.setIcon(QIcon.fromTheme('document-save'))
+        btn_save.setToolTip('Save as...')
+        btn_save.setMinimumSize(QSize(16, 16))
+        btn_save.setMaximumWidth(40)
+        btn_save.clicked.connect(self._onSave)
+        file_layout.addWidget(btn_save)
+        file_layout.addWidget(inputs.HLine())
+
+        btn_scale_to_fit = QPushButton()
+        btn_scale_to_fit.setIcon(QIcon.fromTheme('zoom-fit-best'))
+        btn_scale_to_fit.setToolTip('Zoom to fit visible area (Ctrl+F)')
+        btn_scale_to_fit.clicked.connect(lambda: self._img_viewer.scaleToFitWindow())
+        file_layout.addWidget(btn_scale_to_fit)
+
+        btn_scale_original = QPushButton()
+        btn_scale_original.setIcon(QIcon.fromTheme('zoom-original'))
+        btn_scale_original.setToolTip('Zoom to original size (Ctrl+1)')
+        btn_scale_original.clicked.connect(lambda: self._img_viewer.setScale(1.0))
+        file_layout.addWidget(btn_scale_original)
 
         input_layout = QVBoxLayout()
-
         # Let user select a single channel if multi-channel input is provided
         if not self._is_single_channel:
             if self._data_type == DataType.FLOW and self._data.shape[2] == 2:
@@ -667,20 +687,20 @@ class Inspector(QMainWindow):
         self._visualization_dropdown.setToolTip('Select raw vs. colorized')
         input_layout.addWidget(self._visualization_dropdown)
 
-        # Layout buttons horizontally
-        btn_layout = QHBoxLayout()
+        # Layout buttons horizontally #TODO rm
+        # btn_layout = QHBoxLayout()
         # Button to allow user scaling the displayed image
-        btn_scale_to_fit = QPushButton('Scale to fit window')
-        btn_scale_to_fit.setToolTip('Image should fit inside visible area, shortcut: Ctrl+F')
-        btn_scale_to_fit.clicked.connect(lambda: self._img_viewer.scaleToFitWindow())
-        btn_layout.addWidget(btn_scale_to_fit)
+        # btn_scale_to_fit = QPushButton('Scale to fit window')
+        # btn_scale_to_fit.setToolTip('Image should fit inside visible area, shortcut: Ctrl+F')
+        # btn_scale_to_fit.clicked.connect(lambda: self._img_viewer.scaleToFitWindow())
+        # btn_layout.addWidget(btn_scale_to_fit)
 
-        btn_scale_original = QPushButton('Original size')
-        btn_scale_original.setToolTip('Scale to 100 %, shortcut: Ctrl+1')
-        btn_scale_original.clicked.connect(lambda: self._img_viewer.setScale(1.0))
-        btn_layout.addWidget(btn_scale_original)
+        # btn_scale_original = QPushButton('Original size')
+        # btn_scale_original.setToolTip('Scale to 100 %, shortcut: Ctrl+1')
+        # btn_scale_original.clicked.connect(lambda: self._img_viewer.setScale(1.0))
+        # btn_layout.addWidget(btn_scale_original)
 
-        input_layout.addLayout(btn_layout)
+        # input_layout.addLayout(btn_layout)
 
         # Image viewer and colorbar
         img_layout = QHBoxLayout()
@@ -704,14 +724,22 @@ class Inspector(QMainWindow):
         self._data_label.setFrameShadow(QFrame.Sunken)
         self._data_label.setToolTip('Data properties')
 
-        # Place the information label next to the user inputs:
+        # The "menu"/"control bar" inputs/controls looks like:
+        # File I/O  |  Visualization  | Image Information.
         top_row_layout = QHBoxLayout()
+        file_layout.setAlignment(Qt.AlignTop)  # Align I/O buttons top
+        top_row_layout.addLayout(file_layout)
+        top_row_layout.addWidget(inputs.VLine())
+        input_layout.setAlignment(Qt.AlignTop)
         top_row_layout.addLayout(input_layout)
         top_row_layout.addWidget(self._data_label)
+
         # Set the main widget's layout
         main_layout = QVBoxLayout()
         main_layout.addLayout(top_row_layout)
         main_layout.addLayout(img_layout)
+
+        self._main_widget = QWidget()
         self._main_widget.setLayout(main_layout)
         self.setCentralWidget(self._main_widget)
         self.resize(self._initial_window_size)
