@@ -930,12 +930,9 @@ class Inspector(QMainWindow):
         except Exception as e:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
-            msg.setText('Error loading "{:s}"'.format(DataType.toStr(data_type)))
-            msg.setInformativeText('Cannot load "{:s}" as "{:s}":\n\n{:s}'.format(
-                filename,
-                DataType.toStr(data_type),
-                str(e)
-            ))
+            msg.setText('Error loading file as type "{:s}"'.format(
+                DataType.toStr(data_type)))
+            msg.setInformativeText('Logged exception:\n{:s}'.format(str(e)))
             msg.setWindowTitle('Error')
             msg.exec()
 
