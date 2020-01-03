@@ -11,3 +11,16 @@ __author__ = 'snototter'
 import os
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'version.py')) as vf:
     exec(vf.read())
+
+
+def inspect(data, **kwargs):
+    """Just a "symlink" to iminspector.inspector.inspect() for convenience/out
+    of laziness. Refer to inspector.inspect() for the actual documentation.
+
+    How to save a few characters using this wrapper:
+    import numpy as np
+    import iminspect
+    iminspect.inspect(np.random.rand(16, 16))
+    """
+    from . import inspector
+    inspector.inspect(data, **kwargs)
