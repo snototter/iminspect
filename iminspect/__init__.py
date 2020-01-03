@@ -13,7 +13,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'version.py')
     exec(vf.read())
 
 
-def inspect(data, **kwargs):
+def show(data, **kwargs):
     """Just a "symlink" to iminspector.inspector.inspect() for convenience/out
     of laziness. Refer to inspector.inspect() for the actual documentation.
 
