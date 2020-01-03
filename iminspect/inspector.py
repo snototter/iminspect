@@ -1031,6 +1031,7 @@ class Inspector(QMainWindow):
         if res is None or any([r is None for r in res]):
             return
         filename, save_type = res
+        save_args = dict()
         if save_type == SaveInspectionFileDialog.SAVE_VISUALIZATION:
             filename = FilenameUtils.ensureImageExtension(filename)
             pc = self._visualized_pseudocolor
@@ -1048,12 +1049,24 @@ class Inspector(QMainWindow):
             raise NotImplementedError('Save as %d type is not yet supported' % save_type)
 
         try:
-            # TODO test various combinations, invalid user input, etc.
-            # Successfully tested:
-            # * Save RGB ==> RGB
-            # * Save Depth ==> Depth (16bit)
-            # * d
-            #TODO make test (save to a tempfile, check via 'file' command)
+            # Successfully (manually) tested:
+            # * Save raw input:
+            #   o Save RGB (png, jpg)
+            #     + Load RGB as RGB, save RGB
+            #     + Load mono as RGB, save RGB
+            #   o Save mono (png, jpg)
+            #     + Load mono as mono, save mono
+            #     + Load RGB as mono, save mono 
+            #   o Save depth (16bit png)
+            #     + Load depth as depth, save depth
+            #     + Load mono as depth, save depth
+            #     + Load RGB as depth, save depth
+            #   o Save boolean mask (1bit png)
+            # * Save visualization ==> RGB png/jpg
+            # * Save optical flow (raw & visualization)
+            #
+            # Nice-to-have: automated tests (see tests of vito package on how
+            # to check file metadata)
             save_fx(filename, save_data)
         except Exception as e:
             msg = QMessageBox()

@@ -62,21 +62,19 @@ def test_FilenameUtils():
     assert FilenameUtils.ensureImageExtension('FoO.pNg') == 'FoO.pNg'
     assert FilenameUtils.ensureImageExtension('FoO.pNgGg') == 'FoO.pNgGg.png'
 
-    #TODO same for ensure flow extension and ensureFileExtension
     assert FilenameUtils.ensureFlowExtension(None) is None
+    with pytest.raises(ValueError):
+        FilenameUtils.ensureFlowExtension('')
+    assert FilenameUtils.ensureFlowExtension('foo') == 'foo.flo'
+    assert FilenameUtils.ensureFlowExtension('foo.jpEG') == 'foo.jpEG.flo'
+    assert FilenameUtils.ensureFlowExtension('FoO.flow') == 'FoO.flow.flo'
+    assert FilenameUtils.ensureFlowExtension('FoO.FlO') == 'FoO.FlO'
 
     assert FilenameUtils.ensureFileExtension(None, []) is None
     with pytest.raises(ValueError):
         FilenameUtils.ensureFileExtension('', ['foo'])
     with pytest.raises(ValueError):
         FilenameUtils.ensureFileExtension('foo', [])
-
-
-def test_saving(tmp_path):
-    out_fn = tmp_path / 'save-test.png'
-    import os
-    print(str(out_fn))
-    out_fn.write_text("FOO")
-    assert os.path.exists(str(out_fn))
-    #TODO use str(out_fn) to store....
-    # see http://doc.pytest.org/en/latest/tmpdir.html for tmp_path fixture
+    assert FilenameUtils.ensureFileExtension('foo.bar', ['bla', 'bar']) == 'foo.bar'
+    assert FilenameUtils.ensureFileExtension('f00.BaR', ['bla', 'bar']) == 'f00.BaR'
+    assert FilenameUtils.ensureFileExtension('foo.barz', ['bla', 'bar']) == 'foo.barz.bla'
