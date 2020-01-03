@@ -5,11 +5,12 @@
 #TODO Test saving: color, monochrome, 16bit, depth vs categoric, bool, flow
 #TODO implement above, then deploy
 import numpy as np
+import os
 from enum import Enum
 import qimage2ndarray
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
-    QShortcut, QDialog, QErrorMessage
+    QShortcut, QDialog, QMessageBox
 from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
     QKeySequence, QPixmap
@@ -349,6 +350,117 @@ class OpenInspectionFileDialog(QDialog):
         return None
 
 
+class SaveInspectionFileDialog(QDialog):
+    SAVE_VISUALIZATION = 0
+    SAVE_RAW = 1
+
+    def __init__(self, data_type, parent=None):
+        super(SaveInspectionFileDialog, self).__init__(parent)
+        self._filename = None
+        self._save_as = None
+        self._confirmed = False
+        self._prepareLayout(data_type)
+
+    def _prepareLayout(self, data_type):
+        self.setWindowTitle('Save File')
+        layout = QVBoxLayout()
+        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*)'
+        self._file_widget = inputs.SelectDirEntryWidget('File:',
+            inputs.SelectDirEntryType.FILENAME_SAVE, parent=self,
+            filters=file_filters,
+            initial_filter='Optical Flow (*.flo)' if data_type == DataType.FLOW
+                else 'Images (*.bmp *.jpg *.jpeg *.png *.ppm)',
+            min_label_width=None, relative_base_path=None)
+        self._file_widget.value_changed.connect(self._fileSelected)
+        layout.addWidget(self._file_widget)
+
+        self._save_as_widget = inputs.DropDownSelectionWidget('What to save:',
+            [(SaveInspectionFileDialog.SAVE_VISUALIZATION, 'Current visualization'),
+            (SaveInspectionFileDialog.SAVE_RAW, 'Input data')])
+        layout.addWidget(self._save_as_widget)
+
+        btn_layout = QHBoxLayout()
+        btn_cancel = QPushButton('Cancel')
+        btn_cancel.clicked.connect(self._onCancel)
+        btn_layout.addWidget(btn_cancel)
+
+        self._btn_confirm = QPushButton('Save')
+        self._btn_confirm.clicked.connect(self._onConfirm)
+        self._btn_confirm.setEnabled(False)
+        btn_layout.addWidget(self._btn_confirm)
+
+        layout.addLayout(btn_layout)
+        self.setLayout(layout)
+
+    def open(self):
+        super(SaveInspectionFileDialog, self).open()
+        self._file_widget.open_dialog()
+
+    @pyqtSlot(object)
+    def _fileSelected(self, filename):
+        self._filename = filename
+        self._btn_confirm.setEnabled(self._filename is not None)
+
+    @pyqtSlot()
+    def _onCancel(self):
+        self.reject()
+
+    @pyqtSlot()
+    def _onConfirm(self):
+        tpl = self._save_as_widget.get_input()
+        if tpl is None:
+            self._save_as = None
+        else:
+            self._save_as = tpl[0]
+        self._confirmed = True
+        self.accept()
+
+    def getSelection(self):
+        if self._confirmed:
+            return (self._filename, self._save_as)
+        return None
+
+    @staticmethod
+    def ensureFileExtension(filename, extensions):
+        """Ensures that the given filename has one of the given extensions.
+        Otherwise, the first element of extensions will be appended.
+        :param filename: string
+        :param extensions: list of strings
+        """
+        if filename is None:
+            return None
+        if len(extensions) == 0:
+            raise ValueError('List of extensions to test agains cannot be empty')
+        _, ext = os.path.splitext(filename.lower())
+        for e in extensions:
+            # Ensure that the extension to test agains starts with '.'
+            if e.startswith('.'):
+                test_ext = e
+            else:
+                test_ext = '.' + e
+            if test_ext.lower() == ext:
+                return filename
+        # No extension matched, thus append the first one
+        if extensions[0].startswith('.'):
+            return filename + extensions[0]
+        else:
+            return filename + '.' + extensions[0]
+
+    @staticmethod
+    def ensureImageExtension(filename):
+        """Ensures that the given filename has an image type extension.
+        Otherwise, appends JPEG extension.
+        """
+        return SaveInspectionFileDialog.ensureFileExtension(
+            filename, ['.png', '.jpg', '.jpeg', '.ppm', '.bmp'])
+
+    @staticmethod
+    def ensureFlowExtension(filename):
+        """Ensures that the given filename has the .flo extension."""
+        return SaveInspectionFileDialog.ensureFileExtension(
+            filename, ['.flo'])
+
+
 class Inspector(QMainWindow):
     """Opens GUI to inspect the given data"""
 
@@ -374,6 +486,7 @@ class Inspector(QMainWindow):
         self._window_title = window_title
         self._shortcuts = list()
         self._open_file_dialog = None
+        self._save_file_dialog = None
         # All other internal fields are declared and set in inspectData:
         self.inspectData(data, data_type, display_settings)
 
@@ -595,6 +708,10 @@ class Inspector(QMainWindow):
         self._shortcut_open = QShortcut(QKeySequence('Ctrl+O'), self)
         self._shortcut_open.activated.connect(self._onOpen)
         self._shortcuts.append(self._shortcut_open)
+        # Save file
+        self._shortcut_save = QShortcut(QKeySequence('Ctrl+S'), self)
+        self._shortcut_save.activated.connect(self._onSave)
+        self._shortcuts.append(self._shortcut_save)
         # Close window
         self._shortcut_exit = QShortcut(QKeySequence('Ctrl+Q'), self)
         self._shortcut_exit.activated.connect(QApplication.instance().quit)
@@ -790,7 +907,7 @@ class Inspector(QMainWindow):
     @pyqtSlot()
     def _onOpenFinished(self):
         res = self._open_file_dialog.getSelection()
-        if res is None:
+        if res is None or any([r is None for r in res]):
             return
         try:
             filename, data_type = res
@@ -811,14 +928,42 @@ class Inspector(QMainWindow):
             current_display = self.currentDisplaySettings()
             self.inspectData(data, data_type, display_settings=current_display)
         except Exception as e:
-            error_dialog = QErrorMessage()
-            error_dialog.setWindowTitle('Error loading "{:s}"'.format(DataType.toStr(data_type)))
-            error_dialog.showMessage('Cannot load "{:s}" as "{:s}":\n{:s}'.format(
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText('Error loading "{:s}"'.format(DataType.toStr(data_type)))
+            msg.setInformativeText('Cannot load "{:s}" as "{:s}":\n\n{:s}'.format(
                 filename,
                 DataType.toStr(data_type),
                 str(e)
             ))
-            error_dialog.exec_()
+            msg.setWindowTitle('Error')
+            msg.exec()
+
+    @pyqtSlot()
+    def _onSave(self):
+        self._save_file_dialog = SaveInspectionFileDialog(self._data_type, parent=self)
+        self._save_file_dialog.finished.connect(self._onSaveFinished)
+        self._save_file_dialog.open()
+
+    @pyqtSlot()
+    def _onSaveFinished(self):
+        res = self._save_file_dialog.getSelection()
+        if res is None or any([r is None for r in res]):
+            return
+        filename, save_type = res
+        if save_type == SaveInspectionFileDialog.SAVE_VISUALIZATION:
+            filename = SaveInspectionFileDialog.ensureImageExtension(filename)
+            pc = self._visualized_pseudocolor
+            save_data = self._visualized_data if pc is None else pc
+        elif save_type == SaveInspectionFileDialog.SAVE_RAW:
+            filename = \
+                SaveInspectionFileDialog.ensureFlowExtension(filename) if self._data_type == DataType.FLOW \
+                else SaveInspectionFileDialog.ensureImageExtension(filename)
+            save_data = self._data
+        else:
+            raise NotImplementedError('Save as %d type is not yet supported' % save_type)
+        # TODO implement
+        print('TODO save: ', res, filename, save_data.dtype, save_data.shape)
 
 
 def inspect(
