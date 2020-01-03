@@ -46,6 +46,9 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 
 
 ## Changelog
+* Upcoming `1.1.0`
+  * Support saving visualization or raw input data to disk.
+  * Added shorthand wrapper to `inspect()` call.
 * `1.0.0`
   * Major code refactoring: use data type enum instead of various flags (this breaks previous inspect() calls).
   * Optical flow support.
