@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Inspect matrix/image data"""
+
 #TODO ctrl+s(ave) flosave, imsave...
 #TODO Test saving: color, monochrome, 16bit, depth vs categoric, bool, flow
 #TODO implement above, then deploy
+
 import numpy as np
 import os
 from enum import Enum
@@ -952,15 +954,30 @@ class Inspector(QMainWindow):
             filename = SaveInspectionFileDialog.ensureImageExtension(filename)
             pc = self._visualized_pseudocolor
             save_data = self._visualized_data if pc is None else pc
+            save_fx = imutils.imsave
         elif save_type == SaveInspectionFileDialog.SAVE_RAW:
-            filename = \
-                SaveInspectionFileDialog.ensureFlowExtension(filename) if self._data_type == DataType.FLOW \
-                else SaveInspectionFileDialog.ensureImageExtension(filename)
+            if self._data_type == DataType.FLOW:
+                filename = SaveInspectionFileDialog.ensureFlowExtension(filename)
+                save_fx = flowutils.flosave
+            else:
+                filename = SaveInspectionFileDialog.ensureImageExtension(filename)
+                save_fx = imutils.imsave
             save_data = self._data
         else:
             raise NotImplementedError('Save as %d type is not yet supported' % save_type)
-        # TODO implement
-        print('TODO save: ', res, filename, save_data.dtype, save_data.shape)
+
+        try:
+            # TODO implement | test various combinations, invalid user input, etc.
+            save_fx(filename, save_data)
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText('Error saving {:s}'.format(
+                'current visualization' if save_type == SaveInspectionFileDialog.SAVE_VISUALIZATION
+                else 'raw input data'))
+            msg.setInformativeText('Logged exception:\n{:s}'.format(str(e)))
+            msg.setWindowTitle('Error')
+            msg.exec()
 
 
 def inspect(
