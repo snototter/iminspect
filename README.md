@@ -5,10 +5,10 @@
 A python utility package for image/matrix visualization.
 
 ## Dependencies
-* `numpy`, obviously
-* `PyQt5` for the graphical user interface
-* `qimage2ndarray` to convert numpy ndarrays to Qt images
-* `vito` a lightweight vision tool package
+* `numpy`, for matrix manipulation
+* `PyQt5`, for the graphical user interface
+* `qimage2ndarray`, to convert numpy ndarrays to Qt images
+* `vito`, a lightweight vision tool package
 
 ## Example usage:
 ```python
@@ -50,7 +50,7 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
   * Major code refactoring: use data type enum instead of various flags (this breaks previous inspect() calls).
   * Optical flow support.
   * Load another file from disk (via `Ctrl+O`).
-  * Minor usability improvements, e.g. restore display settings when opening similar data type, handle file loading errors, etc.
+  * Usability improvements, e.g. restore display settings when opening similar data type, handle file loading errors, etc.
 * `0.2.0`
   * Major refactoring: moved image utils and colorizing code to separate [vito](https://github.com/snototter/vito) package.
   * Usability improvements: keyboard shortcuts for zooming, scaling and scrolling.
@@ -72,3 +72,7 @@ Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 ## Known Issues
 * Incrementally in-/decreasing the zoom factor worked "good enough", thus I didn't bother in making it more complex/user-friendly.
 
+
+## Planned Extensions
+* Support saving (raw vs visualization) - thoroughly check PIL's capabilities (e.g. 16 bit depth PNGs or int32 label images).
+* Add input widgets for shortcut-only commands (e.g. file I/O).
