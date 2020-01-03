@@ -25,7 +25,7 @@ inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), data_type=DataType.C
 Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
 ![Screenshot](https://github.com/snototter/iminspect/blob/master/iminspect.jpg?raw=true "iminspect GUI")
 
-<br/><br/>Exemplary screenshot (visualizing a mask image):<br/>
+Another exemplary screenshot (visualizing a mask image):<br/>
 ![Screenshot](https://github.com/snototter/iminspect/blob/master/iminspect-mask.jpg?raw=true "iminspect GUI")
 
 
