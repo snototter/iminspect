@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QShortcut, QDialog, QMessageBox
 from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
-    QKeySequence, QPixmap
+    QKeySequence, QPixmap, QIcon
 
 from vito import imutils
 from vito import colormaps
@@ -531,7 +531,7 @@ class Inspector(QMainWindow):
         stdout_str.append('Shape:     {}\n'.format(self._data.shape))
 
         lbl_txt = '<table cellpadding="5"><tr><th colspan="2">Information</th></tr>'
-        lbl_txt += '<tr><td>Type: {} ({})</td><td>Shape: {}</td></tr>'.format(
+        lbl_txt += '<tr><td><b>Type:</b> {} ({})</td><td><b>Shape:</b> {}</td></tr>'.format(
             self._data.dtype, DataType.toStr(self._data_type), self._data.shape)
 
         # Select format function to display data in status bar/tooltip
@@ -621,6 +621,15 @@ class Inspector(QMainWindow):
 
     def _resetLayout(self):
         self._main_widget = QWidget()
+
+        #TODO hboxlayout I/O buttons, vline, current layout
+        # main_layout = QHBoxLayout()
+        # btn = QPushButton()
+        # icon = QPixmap("path to icon")
+        # btn.setIcon(QIcon(icon))
+        # # btn.setIconSize(icon.rect().size())
+        # btn.setIconSize(QSize(32, 32))
+
         input_layout = QVBoxLayout()
 
         # Let user select a single channel if multi-channel input is provided
@@ -631,16 +640,18 @@ class Inspector(QMainWindow):
                 dd_options = [(-1, 'All')] + [(c, 'Layer {:d}'.format(c)) for c in range(self._data.shape[2])]
             self._layer_dropdown = inputs.DropDownSelectionWidget('Select layer:', dd_options)
             self._layer_dropdown.value_changed.connect(self._updateDisplay)
+            self._layer_dropdown.setToolTip('Select which layer to visualize')
             input_layout.addWidget(self._layer_dropdown)
 
         if self._is_single_channel or self._data_type == DataType.CATEGORIC:
             self._checkbox_global_limits = None
         else:
             self._checkbox_global_limits = inputs.CheckBoxWidget(
-                'Use same visualization limits for all channels:',
+                'Same visualization limits for all channels:',
                 checkbox_left=False, is_checked=True)
-            input_layout.addWidget(self._checkbox_global_limits)
             self._checkbox_global_limits.value_changed.connect(self._updateDisplay)
+            self._checkbox_global_limits.setToolTip('If checked, visualization uses min/max from data[:] instead of data[:,:, channel]')
+            input_layout.addWidget(self._checkbox_global_limits)
 
         # Let user select the visualization method
         vis_options = [(Inspector.VIS_RAW, 'Raw data'), (0, 'Grayscale')] + \
@@ -653,25 +664,23 @@ class Inspector(QMainWindow):
             initial_selected_index=len(Inspector.VIS_COLORMAPS) if self._is_single_channel
                 else (len(Inspector.VIS_COLORMAPS)-1 if self._data_type == DataType.FLOW else 0))
         self._visualization_dropdown.value_changed.connect(self._updateDisplay)
+        self._visualization_dropdown.setToolTip('Select raw vs. colorized')
         input_layout.addWidget(self._visualization_dropdown)
 
         # Layout buttons horizontally
         btn_layout = QHBoxLayout()
         # Button to allow user scaling the displayed image
         btn_scale_to_fit = QPushButton('Scale to fit window')
+        btn_scale_to_fit.setToolTip('Image should fit inside visible area, shortcut: Ctrl+F')
         btn_scale_to_fit.clicked.connect(lambda: self._img_viewer.scaleToFitWindow())
         btn_layout.addWidget(btn_scale_to_fit)
 
         btn_scale_original = QPushButton('Original size')
+        btn_scale_original.setToolTip('Scale to 100 %, shortcut: Ctrl+1')
         btn_scale_original.clicked.connect(lambda: self._img_viewer.setScale(1.0))
         btn_layout.addWidget(btn_scale_original)
 
         input_layout.addLayout(btn_layout)
-
-        # Label to show important image statistics/information
-        self._data_label = QLabel()
-        self._data_label.setFrameShape(QFrame.Panel)
-        self._data_label.setFrameShadow(QFrame.Sunken)
 
         # Image viewer and colorbar
         img_layout = QHBoxLayout()
@@ -680,6 +689,7 @@ class Inspector(QMainWindow):
         img_layout.addWidget(self._img_viewer)
 
         self._colorbar = ColorBar()
+        self._colorbar.setToolTip('Color bar')
         img_layout.addWidget(self._colorbar)
 
         # Set font of tool tips
@@ -687,6 +697,12 @@ class Inspector(QMainWindow):
 
         # Grab a convenience handle to the status bar
         self._status_bar = self.statusBar()
+
+        # Label to show important image statistics/information
+        self._data_label = QLabel()
+        self._data_label.setFrameShape(QFrame.Panel)
+        self._data_label.setFrameShadow(QFrame.Sunken)
+        self._data_label.setToolTip('Data properties')
 
         # Place the information label next to the user inputs:
         top_row_layout = QHBoxLayout()
