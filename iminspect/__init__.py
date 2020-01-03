@@ -4,7 +4,7 @@
 Python Qt5 utils to easily visualize image data for faster development.
 """
 
-__all__ = ['colormaps', 'imgview', 'inputs', 'inspector']
+__all__ = ['imgview', 'inputs', 'inspector']
 __author__ = 'snototter'
 
 # Load version
@@ -20,7 +20,7 @@ def show(data, **kwargs):
     How to save a few characters using this wrapper:
     import numpy as np
     import iminspect
-    iminspect.inspect(np.random.rand(16, 16))
+    iminspect.show(np.random.rand(16, 16))
     """
     from . import inspector
     inspector.inspect(data, **kwargs)
