@@ -705,21 +705,6 @@ class Inspector(QMainWindow):
         self._visualization_dropdown.setToolTip('Select raw vs. colorized')
         input_layout.addWidget(self._visualization_dropdown)
 
-        # Layout buttons horizontally #TODO rm
-        # btn_layout = QHBoxLayout()
-        # Button to allow user scaling the displayed image
-        # btn_scale_to_fit = QPushButton('Scale to fit window')
-        # btn_scale_to_fit.setToolTip('Image should fit inside visible area, shortcut: Ctrl+F')
-        # btn_scale_to_fit.clicked.connect(lambda: self._img_viewer.scaleToFitWindow())
-        # btn_layout.addWidget(btn_scale_to_fit)
-
-        # btn_scale_original = QPushButton('Original size')
-        # btn_scale_original.setToolTip('Scale to 100 %, shortcut: Ctrl+1')
-        # btn_scale_original.clicked.connect(lambda: self._img_viewer.setScale(1.0))
-        # btn_layout.addWidget(btn_scale_original)
-
-        # input_layout.addLayout(btn_layout)
-
         # Image viewer and colorbar
         img_layout = QHBoxLayout()
         self._img_viewer = imgview.ImageViewer()
