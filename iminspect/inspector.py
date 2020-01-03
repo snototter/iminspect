@@ -12,8 +12,8 @@ from enum import Enum
 import qimage2ndarray
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, QToolTip, \
-    QShortcut, QDialog, QMessageBox
-from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSlot
+    QShortcut, QDialog, QMessageBox, QStatusBar
+from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
     QKeySequence, QPixmap, QIcon
 
@@ -467,6 +467,40 @@ class SaveInspectionFileDialog(QDialog):
         return None
 
 
+class ZoomWidget(QWidget):
+    zoomBestFitRequest = pyqtSignal()
+    zoomOriginalSize = pyqtSignal()
+    #TODO use QToolButton instead of QPushButton
+
+    def __init__(self, parent=None):
+        super(ZoomWidget, self).__init__(parent)
+        layout = QHBoxLayout()
+        layout.addWidget(QLabel('Zoom:'))
+        btn_fit = QPushButton()
+        btn_fit.setIcon(QIcon.fromTheme('zoom-fit-best'))
+        btn_fit.setToolTip('Zoom to fit visible area (Ctrl+F)')
+        btn_fit.setMinimumSize(QSize(20, 20))
+        btn_fit.clicked.connect(self.zoomBestFitRequest)
+        layout.addWidget(btn_fit)
+
+        btn_original = QPushButton()
+        btn_original.setIcon(QIcon.fromTheme('zoom-original'))
+        btn_original.setToolTip('Zoom to original size (Ctrl+1)')
+        btn_fit.setMinimumSize(QSize(20, 20))
+        btn_original.clicked.connect(self.zoomOriginalSize)
+        layout.addWidget(btn_original)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+    def paintEvent(self, event):
+        #TODO remove (used to debug unwanted margins/padding)
+        qp = QPainter()
+        qp.begin(self)
+        qp.fillRect(self.rect(), QBrush(Qt.red, Qt.SolidPattern))
+        qp.end()
+        super(ZoomWidget, self).paintEvent(event)
+
+
 class Inspector(QMainWindow):
     """Opens GUI to inspect the given data"""
 
@@ -716,7 +750,15 @@ class Inspector(QMainWindow):
         QToolTip.setFont(QFont('SansSerif', 10))
 
         # Grab a convenience handle to the status bar
-        self._status_bar = self.statusBar()
+        #self._status_bar = self.statusBar()
+        self._status_bar = QStatusBar()
+        self.setStatusBar(self._status_bar)
+        zoom_widget = ZoomWidget()
+        # p=zoom_widget.palette()
+        # p.setColor(zoom_widget.backgroundRole(), Qt.red)
+        # zoom_widget.setPalette(p)
+
+        self._status_bar.addPermanentWidget(zoom_widget)
 
         # Label to show important image statistics/information
         self._data_label = QLabel()
@@ -738,6 +780,8 @@ class Inspector(QMainWindow):
         main_layout = QVBoxLayout()
         main_layout.addLayout(top_row_layout)
         main_layout.addLayout(img_layout)
+        # Important to prevent ugly gaps between status bar and image canvas:
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         self._main_widget = QWidget()
         self._main_widget.setLayout(main_layout)
