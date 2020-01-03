@@ -352,6 +352,50 @@ class OpenInspectionFileDialog(QDialog):
         return None
 
 
+class FilenameUtils(object):
+    @staticmethod
+    def ensureFileExtension(filename, extensions):
+        """Ensures that the given filename has one of the given extensions.
+        Otherwise, the first element of extensions will be appended.
+        :param filename: string
+        :param extensions: list of strings
+        """
+        if filename is None:
+            return None
+        if len(filename) == 0:
+            raise ValueError('Filename cannot be empty')
+        if len(extensions) == 0:
+            raise ValueError('List of extensions to test agains cannot be empty')
+        _, ext = os.path.splitext(filename.lower())
+        for e in extensions:
+            # Ensure that the extension to test agains starts with '.'
+            if e.startswith('.'):
+                test_ext = e
+            else:
+                test_ext = '.' + e
+            if test_ext.lower() == ext:
+                return filename
+        # No extension matched, thus append the first one
+        if extensions[0].startswith('.'):
+            return filename + extensions[0]
+        else:
+            return filename + '.' + extensions[0]
+
+    @staticmethod
+    def ensureImageExtension(filename):
+        """Ensures that the given filename has an image type extension.
+        Otherwise, appends PNG extension.
+        """
+        return FilenameUtils.ensureFileExtension(
+            filename, ['.png', '.jpg', '.jpeg', '.ppm', '.bmp'])
+
+    @staticmethod
+    def ensureFlowExtension(filename):
+        """Ensures that the given filename has the .flo extension."""
+        return FilenameUtils.ensureFileExtension(
+            filename, ['.flo'])
+
+
 class SaveInspectionFileDialog(QDialog):
     SAVE_VISUALIZATION = 0
     SAVE_RAW = 1
@@ -421,46 +465,6 @@ class SaveInspectionFileDialog(QDialog):
         if self._confirmed:
             return (self._filename, self._save_as)
         return None
-
-    @staticmethod
-    def ensureFileExtension(filename, extensions):
-        """Ensures that the given filename has one of the given extensions.
-        Otherwise, the first element of extensions will be appended.
-        :param filename: string
-        :param extensions: list of strings
-        """
-        if filename is None:
-            return None
-        if len(extensions) == 0:
-            raise ValueError('List of extensions to test agains cannot be empty')
-        _, ext = os.path.splitext(filename.lower())
-        for e in extensions:
-            # Ensure that the extension to test agains starts with '.'
-            if e.startswith('.'):
-                test_ext = e
-            else:
-                test_ext = '.' + e
-            if test_ext.lower() == ext:
-                return filename
-        # No extension matched, thus append the first one
-        if extensions[0].startswith('.'):
-            return filename + extensions[0]
-        else:
-            return filename + '.' + extensions[0]
-
-    @staticmethod
-    def ensureImageExtension(filename):
-        """Ensures that the given filename has an image type extension.
-        Otherwise, appends JPEG extension.
-        """
-        return SaveInspectionFileDialog.ensureFileExtension(
-            filename, ['.png', '.jpg', '.jpeg', '.ppm', '.bmp'])
-
-    @staticmethod
-    def ensureFlowExtension(filename):
-        """Ensures that the given filename has the .flo extension."""
-        return SaveInspectionFileDialog.ensureFileExtension(
-            filename, ['.flo'])
 
 
 class Inspector(QMainWindow):
@@ -951,16 +955,16 @@ class Inspector(QMainWindow):
             return
         filename, save_type = res
         if save_type == SaveInspectionFileDialog.SAVE_VISUALIZATION:
-            filename = SaveInspectionFileDialog.ensureImageExtension(filename)
+            filename = FilenameUtils.ensureImageExtension(filename)
             pc = self._visualized_pseudocolor
             save_data = self._visualized_data if pc is None else pc
             save_fx = imutils.imsave
         elif save_type == SaveInspectionFileDialog.SAVE_RAW:
             if self._data_type == DataType.FLOW:
-                filename = SaveInspectionFileDialog.ensureFlowExtension(filename)
+                filename = FilenameUtils.ensureFlowExtension(filename)
                 save_fx = flowutils.flosave
             else:
-                filename = SaveInspectionFileDialog.ensureImageExtension(filename)
+                filename = FilenameUtils.ensureImageExtension(filename)
                 save_fx = imutils.imsave
             save_data = self._data
         else:
@@ -968,6 +972,11 @@ class Inspector(QMainWindow):
 
         try:
             # TODO implement | test various combinations, invalid user input, etc.
+            # Successfully tested:
+            # * Save RGB ==> RGB
+            # * Save Depth ==> Depth (16bit)
+            # * d
+            #TODO make test (save to a tempfile, check via 'file' command)
             save_fx(filename, save_data)
         except Exception as e:
             msg = QMessageBox()

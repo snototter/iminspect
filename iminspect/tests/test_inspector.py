@@ -6,7 +6,9 @@ Very simple test suite (as most of the functionality is GUI-based and thus,
 rather complex to test).
 """
 
-from ..inspector import fmti, fmtb, fmtf, fmt1f, fmt2f, fmt3f, fmt4f
+import pytest
+from ..inspector import fmti, fmtb, fmtf, fmt1f, fmt2f, fmt3f, fmt4f, \
+    FilenameUtils, Inspector
 
 
 def test_fmtb():
@@ -49,3 +51,32 @@ def test_fmt4f():
     assert fmt4f(3) == '3.0000'
     assert fmt4f(17.0099123) == '17.0099'
     assert fmt4f(-12.08) == '-12.0800'
+
+
+def test_FilenameUtils():
+    assert FilenameUtils.ensureImageExtension(None) is None
+    with pytest.raises(ValueError):
+        FilenameUtils.ensureImageExtension('')
+    assert FilenameUtils.ensureImageExtension('foo') == 'foo.png'
+    assert FilenameUtils.ensureImageExtension('foo.jpEG') == 'foo.jpEG'
+    assert FilenameUtils.ensureImageExtension('FoO.pNg') == 'FoO.pNg'
+    assert FilenameUtils.ensureImageExtension('FoO.pNgGg') == 'FoO.pNgGg.png'
+
+    #TODO same for ensure flow extension and ensureFileExtension
+    assert FilenameUtils.ensureFlowExtension(None) is None
+
+    assert FilenameUtils.ensureFileExtension(None, []) is None
+    with pytest.raises(ValueError):
+        FilenameUtils.ensureFileExtension('', ['foo'])
+    with pytest.raises(ValueError):
+        FilenameUtils.ensureFileExtension('foo', [])
+
+
+def test_saving(tmp_path):
+    out_fn = tmp_path / 'save-test.png'
+    import os
+    print(str(out_fn))
+    out_fn.write_text("FOO")
+    assert os.path.exists(out_fn)
+    #TODO use str(out_fn) to store....
+    # see http://doc.pytest.org/en/latest/tmpdir.html for tmp_path fixture
