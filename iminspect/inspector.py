@@ -2,9 +2,6 @@
 # coding=utf-8
 """Inspect matrix/image data"""
 
-#TODO Test saving: color, monochrome, 16bit, depth vs categoric, bool, flow
-#TODO implement above, then deploy
-
 import numpy as np
 import os
 from enum import Enum
@@ -1031,7 +1028,6 @@ class Inspector(QMainWindow):
         if res is None or any([r is None for r in res]):
             return
         filename, save_type = res
-        save_args = dict()
         if save_type == SaveInspectionFileDialog.SAVE_VISUALIZATION:
             filename = FilenameUtils.ensureImageExtension(filename)
             pc = self._visualized_pseudocolor
@@ -1056,7 +1052,7 @@ class Inspector(QMainWindow):
             #     + Load mono as RGB, save RGB
             #   o Save mono (png, jpg)
             #     + Load mono as mono, save mono
-            #     + Load RGB as mono, save mono 
+            #     + Load RGB as mono, save mono
             #   o Save depth (16bit png)
             #     + Load depth as depth, save depth
             #     + Load mono as depth, save depth
