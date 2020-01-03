@@ -469,7 +469,7 @@ class SaveInspectionFileDialog(QDialog):
 
 class ZoomWidget(QWidget):
     zoomBestFitRequest = pyqtSignal()
-    zoomOriginalSize = pyqtSignal()
+    zoomOriginalSizeRequest = pyqtSignal()
     #TODO use QToolButton instead of QPushButton
 
     def __init__(self, parent=None):
@@ -478,17 +478,18 @@ class ZoomWidget(QWidget):
         layout.addWidget(QLabel('Zoom:'))
         btn_fit = QPushButton()
         btn_fit.setIcon(QIcon.fromTheme('zoom-fit-best'))
+        btn_fit.setIconSize(QSize(20, 20))
         btn_fit.setToolTip('Zoom to fit visible area (Ctrl+F)')
-        btn_fit.setMinimumSize(QSize(20, 20))
         btn_fit.clicked.connect(self.zoomBestFitRequest)
         layout.addWidget(btn_fit)
 
         btn_original = QPushButton()
         btn_original.setIcon(QIcon.fromTheme('zoom-original'))
+        btn_original.setIconSize(QSize(20, 20))
         btn_original.setToolTip('Zoom to original size (Ctrl+1)')
-        btn_fit.setMinimumSize(QSize(20, 20))
-        btn_original.clicked.connect(self.zoomOriginalSize)
+        btn_original.clicked.connect(self.zoomOriginalSizeRequest)
         layout.addWidget(btn_original)
+        # Important: remove margins!
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
@@ -583,10 +584,10 @@ class Inspector(QMainWindow):
 
         # Prepare QLabel and stdout message:
         if self._data_type == DataType.BOOL:
-            lbl_txt += '<tr><td colspan="2">Binary mask.</td></tr>'
+            lbl_txt += '<tr><td colspan="2"><b>Binary mask.</b></td></tr>'
         elif self._data_type == DataType.CATEGORIC:
-            stdout_str.append('This is a categoric/label image with {:d} categories'.format(len(self._data_categories)))
-            lbl_txt += '<tr><td colspan="2">Label image, {:d} classes.</td></tr>'.format(len(self._data_categories))
+            stdout_str.append('Label image with {:d} categories'.format(len(self._data_categories)))
+            lbl_txt += '<tr><td colspan="2"><b>Label image, {:d} classes.</b></td></tr>'.format(len(self._data_categories))
         else:
             global_mean = np.mean(self._data[:])
             global_std = np.std(self._data[:])
@@ -595,7 +596,7 @@ class Inspector(QMainWindow):
             stdout_str.append('Maximum: {}'.format(self._data_limits[1]))
             stdout_str.append('Mean:    {} +/- {}\n'.format(global_mean, global_std))
             #
-            lbl_txt += '<tr><td>Range: [{}, {}]</td><td>Mean: {} &#177; {}</td></tr>'.format(
+            lbl_txt += '<tr><td><b>Range:</b> [{}, {}]</td><td><b>Mean:</b> {} &#177; {}</td></tr>'.format(
                 self.__fmt_fx(self._data_limits[0]),
                 self.__fmt_fx(self._data_limits[1]),
                 self.__fmt_fx(global_mean),
@@ -659,31 +660,31 @@ class Inspector(QMainWindow):
         file_layout = QVBoxLayout()
         btn_open = QPushButton()
         btn_open.setIcon(QIcon.fromTheme('document-open'))
+        btn_open.setIconSize(QSize(24, 24))
         btn_open.setToolTip('Open File')
-        btn_open.setMinimumSize(QSize(20, 20))
         btn_open.clicked.connect(self._onOpen)
         file_layout.addWidget(btn_open)
 
         btn_save = QPushButton()
         btn_save.setIcon(QIcon.fromTheme('document-save'))
+        btn_save.setIconSize(QSize(24, 24))
         btn_save.setToolTip('Save as...')
-        btn_save.setMinimumSize(QSize(16, 16))
-        btn_save.setMaximumWidth(40)
         btn_save.clicked.connect(self._onSave)
         file_layout.addWidget(btn_save)
-        file_layout.addWidget(inputs.HLine())
+        # file_layout.addWidget(inputs.HLine())
 
-        btn_scale_to_fit = QPushButton()
-        btn_scale_to_fit.setIcon(QIcon.fromTheme('zoom-fit-best'))
-        btn_scale_to_fit.setToolTip('Zoom to fit visible area (Ctrl+F)')
-        btn_scale_to_fit.clicked.connect(lambda: self._img_viewer.scaleToFitWindow())
-        file_layout.addWidget(btn_scale_to_fit)
+        #TODO rm
+        # btn_scale_to_fit = QPushButton()
+        # btn_scale_to_fit.setIcon(QIcon.fromTheme('zoom-fit-best'))
+        # btn_scale_to_fit.setToolTip('Zoom to fit visible area (Ctrl+F)')
+        # btn_scale_to_fit.clicked.connect(lambda: self._img_viewer.scaleToFitWindow())
+        # file_layout.addWidget(btn_scale_to_fit)
 
-        btn_scale_original = QPushButton()
-        btn_scale_original.setIcon(QIcon.fromTheme('zoom-original'))
-        btn_scale_original.setToolTip('Zoom to original size (Ctrl+1)')
-        btn_scale_original.clicked.connect(lambda: self._img_viewer.setScale(1.0))
-        file_layout.addWidget(btn_scale_original)
+        # btn_scale_original = QPushButton()
+        # btn_scale_original.setIcon(QIcon.fromTheme('zoom-original'))
+        # btn_scale_original.setToolTip('Zoom to original size (Ctrl+1)')
+        # btn_scale_original.clicked.connect(lambda: self._img_viewer.setScale(1.0))
+        # file_layout.addWidget(btn_scale_original)
 
         input_layout = QVBoxLayout()
         # Let user select a single channel if multi-channel input is provided
@@ -757,6 +758,8 @@ class Inspector(QMainWindow):
         # p=zoom_widget.palette()
         # p.setColor(zoom_widget.backgroundRole(), Qt.red)
         # zoom_widget.setPalette(p)
+        zoom_widget.zoomBestFitRequest.connect(lambda: self._img_viewer.scaleToFitWindow())
+        zoom_widget.zoomOriginalSizeRequest.connect(lambda: self._img_viewer.setScale(1.0))
 
         self._status_bar.addPermanentWidget(zoom_widget)
 
