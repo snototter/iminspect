@@ -77,6 +77,6 @@ def test_saving(tmp_path):
     import os
     print(str(out_fn))
     out_fn.write_text("FOO")
-    assert os.path.exists(out_fn)
+    assert os.path.exists(str(out_fn))
     #TODO use str(out_fn) to store....
     # see http://doc.pytest.org/en/latest/tmpdir.html for tmp_path fixture
