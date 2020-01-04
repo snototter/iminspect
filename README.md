@@ -14,7 +14,6 @@ The goal is to allow quick and easy visualization/analysis of:
 * depth maps, and
 * optical flow data.
 
-TODO test RGBA input
 
 ## Dependencies
 * `numpy`, for matrix manipulation
@@ -44,22 +43,22 @@ Another exemplary screenshot (visualizing a mask image):<br/>
 
 ## UI Documentation
 * To inspect a data point/pixel, just move the mouse above it.
-* Zooming
-  * `Ctrl+Wheel` to zoom in/out
-  * `Ctrl+Shift+Wheel` to speed up zooming
-  * `Ctrl+{+|-}` to zoom in/out
-  * `Ctrl+Shift+{+|-}` to zoom in/out faster
-  * `Ctrl+F` zoom such that image fills the available canvas
-  * `Ctrl+1` zoom to original size
-* Scrolling
-  * `Wheel` scroll up/down
-  * `Shift+Wheel` speeds up scrolling
-  * `Ctrl+{Up|Down|Left|Right}` to scroll using keyboard
-  * `Ctrl+Shift+{Up|Down|Left|Right}` scrolls faster
-* Keyboard shortcuts
-  * `Ctrl+Q` closes the inspection GUI
-  * `Ctrl+O` shows dialog to open another file
-  * `Ctrl+S` shows dialog to save input or visualization data
+* Zooming:
+  * `Ctrl+Wheel` to zoom in/out.
+  * `Ctrl+Shift+Wheel` to speed up zooming.
+  * `Ctrl+{+|-}` to zoom in/out.
+  * `Ctrl+Shift+{+|-}` to zoom in/out faster.
+  * `Ctrl+F` zoom such that image fills the available canvas.
+  * `Ctrl+1` zoom to original size.
+* Scrolling:
+  * `Wheel` scroll up/down.
+  * `Shift+Wheel` speeds up scrolling.
+  * `Ctrl+{Up|Down|Left|Right}` to scroll using keyboard.
+  * `Ctrl+Shift+{Up|Down|Left|Right}` scrolls faster.
+* Keyboard shortcuts:
+  * `Ctrl+Q` closes the inspection GUI.
+  * `Ctrl+O` shows dialog to open another file.
+  * `Ctrl+S` shows dialog to save input or visualization data.
 
 
 ## Changelog
