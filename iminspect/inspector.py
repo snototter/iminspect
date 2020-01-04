@@ -1102,7 +1102,7 @@ def inspect(
                    * HxWx2: DataType.FLOW
                    * HxWx3: DataType.COLOR
                    For example, if you have an int32 image you want to visualize
-                   as class labels (instead of depth), specify 
+                   as class labels (instead of depth), specify
                    data_type=DataType.CATEGORICAL.
     flip_channels: this qt window works with RGB images, so flip_channels must
                    be set True if your data is BGR.

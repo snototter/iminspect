@@ -213,7 +213,7 @@ class ImageViewerType(Enum):
     VIEW_ONLY = 1       # Just show the image
     RECT_SELECTION = 2  # Let user select a rectangle
 
-    
+
 class ImageViewer(QScrollArea):
     # Mouse moved to this pixel position
     mouseMoved = pyqtSignal(QPointF)
@@ -236,7 +236,6 @@ class ImageViewer(QScrollArea):
     def pixelFromGlobal(self, global_pos):
         """Map a global position, e.g. QCursor.pos(), to the corresponding
         pixel location."""
-        #TODO what about positoins out of image?!!?!
         return self._canvas.pixelAtWidgetPos(self._canvas.mapFromGlobal(global_pos))
 
     @pyqtSlot(tuple)
