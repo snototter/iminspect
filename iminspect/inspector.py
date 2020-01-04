@@ -478,7 +478,8 @@ class ZoomWidget(QWidget):
     def __init__(self, central_widget, parent=None):
         super(ZoomWidget, self).__init__(parent)
         layout = QHBoxLayout()
-        layout.addWidget(QLabel('Zoom:'))
+        self._scale_label = QLabel('Scale:')
+        layout.addWidget(self._scale_label)
         btn_fit = QToolButton(central_widget)
         btn_fit.setIcon(QIcon.fromTheme('zoom-fit-best'))
         btn_fit.setIconSize(QSize(20, 20))
@@ -495,6 +496,13 @@ class ZoomWidget(QWidget):
         # Important: remove margins!
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
+
+    @pyqtSlot(float)
+    def setScale(self, scale):
+        if scale < 0.01:
+            self._scale_label.setText('Scale < 1 %')
+        else:
+            self._scale_label.setText('Scale {:d} %'.format(int(scale*100)))
 
 
 class Inspector(QMainWindow):
@@ -677,6 +685,7 @@ class Inspector(QMainWindow):
                 dd_options = [(-1, 'All')] + [(c, 'Layer {:d}'.format(c)) for c in range(self._data.shape[2])]
             self._layer_dropdown = inputs.DropDownSelectionWidget('Select layer:', dd_options)
             self._layer_dropdown.value_changed.connect(self._updateDisplay)
+            self._layer_dropdown.value_changed.connect(lambda: self._mouseMoved(None))
             self._layer_dropdown.setToolTip('Select which layer to visualize')
             input_layout.addWidget(self._layer_dropdown)
 
@@ -687,6 +696,7 @@ class Inspector(QMainWindow):
                 'Same visualization limits for all channels:',
                 checkbox_left=False, is_checked=True)
             self._checkbox_global_limits.value_changed.connect(self._updateDisplay)
+            self._checkbox_global_limits.value_changed.connect(lambda: self._mouseMoved(None))
             self._checkbox_global_limits.setToolTip(
                 'If checked, visualization uses min/max from data[:] instead of data[:,:, channel]')
             input_layout.addWidget(self._checkbox_global_limits)
@@ -702,6 +712,7 @@ class Inspector(QMainWindow):
             initial_selected_index=len(Inspector.VIS_COLORMAPS) if self._is_single_channel
                 else (len(Inspector.VIS_COLORMAPS)-1 if self._data_type == DataType.FLOW else 0))
         self._visualization_dropdown.value_changed.connect(self._updateDisplay)
+        self._visualization_dropdown.value_changed.connect(lambda: self._mouseMoved(None))
         self._visualization_dropdown.setToolTip('Select raw vs. colorized')
         input_layout.addWidget(self._visualization_dropdown)
 
@@ -709,6 +720,7 @@ class Inspector(QMainWindow):
         img_layout = QHBoxLayout()
         self._img_viewer = imgview.ImageViewer()
         self._img_viewer.mouseMoved.connect(self._mouseMoved)
+        self._img_viewer.viewChanged.connect(lambda: self._mouseMoved(None))
         img_layout.addWidget(self._img_viewer)
 
         self._colorbar = ColorBar()
@@ -755,6 +767,7 @@ class Inspector(QMainWindow):
             self._zoom_widget.zoomBestFitRequest.connect(lambda: self._img_viewer.scaleToFitWindow())
             self._zoom_widget.zoomOriginalSizeRequest.connect(lambda: self._img_viewer.setScale(1.0))
             self._status_bar.addPermanentWidget(self._zoom_widget)
+        self._img_viewer.imgScaleChanged.connect(self._zoom_widget.setScale)
 
         # Important to prevent ugly gaps between status bar and image canvas:
         margins = main_layout.contentsMargins()
@@ -947,17 +960,22 @@ class Inspector(QMainWindow):
             s += '<tr><td>Layer:</td><td>' + query['currlayer'] + '</td></tr>'
         if query['pseudocol'] is not None:
             s += '<tr><td>Colormap:</td><td> ' + query['pseudocol'] + '</td></tr>'
-        scale = self._img_viewer.currentImageScale()
-        if scale != 1.0:
-            s += '<tr><td>Scale:</td><td>' + ('&lt; 1' if scale < 0.01 else '{:d}'.format(int(scale*100))) + ' %</td></tr>'
         s += '</table>'
         return s
 
     @pyqtSlot(QPointF)
     def _mouseMoved(self, image_pos):
         """Invoked whenever the mouse position changed."""
+        if image_pos is None:
+            # Position will be None if the user scrolls/zooms via keyboard
+            # shortcuts. Thus, update info for positoin under cursor:
+            if not self._img_viewer.underMouse():
+                return
+            image_pos = self._img_viewer.pixelFromGlobal(QCursor.pos())
         q = self._queryDataLocation(image_pos.x(), image_pos.y())
         if q is None:
+            QToolTip.hideText()
+            self._status_bar.showMessage('')
             return
         self._status_bar.showMessage(self._statusBarMessage(q))
         QToolTip.showText(QCursor().pos(), self._tooltipMessage(q))

@@ -14,11 +14,16 @@ import qimage2ndarray
 
 class ImageCanvas(QWidget):
     """Widget to display an image."""
-
+    # User wants to zoom in/out by amount (mouse wheel delta)
     zoomRequest = pyqtSignal(int)
+    # User wants to scroll (Qt.Horizontal or Qt.Vertical, mouse wheel delta)
     scrollRequest = pyqtSignal(int, int)
+    # Mouse moved to this pixel position
     mouseMoved = pyqtSignal(QPointF)
+    # User selected a rectangle (ImageCanvas must be created with rect_selectable=True)
     rectSelected = pyqtSignal(tuple)
+    # Scaling factor of displayed image changed
+    imgScaleChanged = pyqtSignal(float)
 
     def __init__(
             self, parent=None, rect_selectable=False,
@@ -37,9 +42,12 @@ class ImageCanvas(QWidget):
         self.setMouseTracking(True)
 
     def setScale(self, scale):
+        prev_scale = self._scale
         self._scale = scale
         self.adjustSize()
         self.update()
+        if prev_scale != self._scale:
+            self.imgScaleChanged.emit(self._scale)
 
     def loadPixmap(self, pixmap):
         self._pixmap = pixmap
@@ -205,10 +213,16 @@ class ImageViewerType(Enum):
     VIEW_ONLY = 1       # Just show the image
     RECT_SELECTION = 2  # Let user select a rectangle
 
-
+    
 class ImageViewer(QScrollArea):
+    # Mouse moved to this pixel position
     mouseMoved = pyqtSignal(QPointF)
+    # User selected a rectangle (ImageCanvas must be created with rect_selectable=True)
     rectSelected = pyqtSignal(tuple)
+    # Scaling factor of displayed image changed
+    imgScaleChanged = pyqtSignal(float)
+    # The view changed due to the user scrolling or zooming
+    viewChanged = pyqtSignal()
 
     def __init__(self, parent=None, viewer_type=ImageViewerType.VIEW_ONLY, **kwargs):
         super(ImageViewer, self).__init__(parent)
@@ -218,6 +232,12 @@ class ImageViewer(QScrollArea):
         self._linked_viewers = list()
         self._viewer_type = viewer_type
         self._prepareLayout(**kwargs)
+
+    def pixelFromGlobal(self, global_pos):
+        """Map a global position, e.g. QCursor.pos(), to the corresponding
+        pixel location."""
+        #TODO what about positoins out of image?!!?!
+        return self._canvas.pixelAtWidgetPos(self._canvas.mapFromGlobal(global_pos))
 
     @pyqtSlot(tuple)
     def _emitRectSelected(self, rect):
@@ -238,6 +258,7 @@ class ImageViewer(QScrollArea):
         self._canvas.zoomRequest.connect(self.zoom)
         self._canvas.scrollRequest.connect(self.scroll)
         self._canvas.mouseMoved.connect(self.mouseMovedHandler)
+        self._canvas.imgScaleChanged.connect(self.imgScaleChanged)
 
         self.setWidget(self._canvas)
         self.setWidgetResizable(True)
@@ -311,6 +332,7 @@ class ImageViewer(QScrollArea):
         px_pos_prev = self._canvas.pixelAtWidgetPos(self._canvas.mapFromGlobal(cursor_pos))
         self._img_scale += 0.05 * delta / 120
         self.paintCanvas()
+        self.viewChanged.emit()
         if notify_linked:
             # Zoom the linked viewers (if any)
             for v in self._linked_viewers:
@@ -320,7 +342,6 @@ class ImageViewer(QScrollArea):
             delta_widget = self._canvas.pixelToWidgetPos(px_pos_curr) - self._canvas.pixelToWidgetPos(px_pos_prev)
             self.scroll(delta_widget.x()*120/self.horizontalScrollBar().singleStep(), Qt.Horizontal, notify_linked=True)
             self.scroll(delta_widget.y()*120/self.verticalScrollBar().singleStep(), Qt.Vertical, notify_linked=True)
-        # TODO emit mouse moved if cursor hovers over the image (pixel position may have changed)
 
     @pyqtSlot(int, int)
     def scroll(self, delta, orientation, notify_linked=True):
@@ -328,10 +349,10 @@ class ImageViewer(QScrollArea):
         steps = -delta / 120
         bar = self._scoll_bars[orientation]
         bar.setValue(bar.value() + bar.singleStep() * steps)
+        self.viewChanged.emit()
         if notify_linked:
             for v in self._linked_viewers:
                 v.scroll(delta, orientation, notify_linked=False)
-        # TODO emit mouse moved if cursor hovers over the image (pixel position may have changed)
 
     def showImage(self, img, adjust_size=True):
         qimage = qimage2ndarray.array2qimage(img.copy())
@@ -366,7 +387,6 @@ class ImageViewer(QScrollArea):
         a2 = w2 / h2
         self._img_scale = w1 / w2 if a2 >= a1 else h1 / h2
         self.paintCanvas()
-        # TODO emit mouse moved if cursor hovers over the image (pixel position may have changed)
 
     def setScale(self, scale):
         self._img_scale = scale
