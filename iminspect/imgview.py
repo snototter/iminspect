@@ -8,7 +8,7 @@ from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QScrollArea,\
     QHBoxLayout, QVBoxLayout, QDialog
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QSize, QPointF, QPoint, QRect
-from PyQt5.QtGui import QPainter, QPixmap, QCursor, QBrush, QColor, QPen
+from PyQt5.QtGui import QPainter, QPixmap, QCursor, QBrush, QColor, QPen, QPalette
 import qimage2ndarray
 
 
@@ -90,6 +90,7 @@ class ImageCanvas(QWidget):
         qp.setRenderHint(QPainter.Antialiasing)
         qp.setRenderHint(QPainter.HighQualityAntialiasing)
         # qp.setRenderHint(QPainter.SmoothPixmapTransform)
+        qp.fillRect(self.rect(), QBrush(self.palette().color(QPalette.Background)))
         qp.scale(self._scale, self._scale)
         # Adapted fast drawing from:
         # https://www.qt.io/blog/2006/05/13/fast-transformed-pixmapimage-drawing
@@ -104,7 +105,6 @@ class ImageCanvas(QWidget):
             qp.translate(self.offsetToCenter())
             qp.drawPixmap(0, 0, self._pixmap)
             exposed_rect = QRect(0, 0, self._pixmap.width(), self._pixmap.height())
-
         # Draw overlays
         if self._is_rect_selectable and self._rectangle is not None:
             l, t, w_roi, h_roi = self._rectangle

@@ -40,6 +40,8 @@ Exemplary screenshot (visualizing categorical data, i.e. labels):<br/>
 Another exemplary screenshot (visualizing a mask image):<br/>
 ![Screenshot](https://github.com/snototter/iminspect/blob/master/iminspect-mask.jpg?raw=true "iminspect GUI")
 
+TODO sintel flow vis
+TODO same window size for screenshots
 
 ## UI Documentation
 * To inspect a data point/pixel, just move the mouse above it.

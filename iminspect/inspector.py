@@ -1084,7 +1084,7 @@ def inspect(
         flip_channels=False,
         label=None,
         display_settings=None,
-        initial_window_size=QSize(1280, 720)):
+        initial_window_size=(1280, 720)):
     """Opens a GUI to visualize the given image data.
 
     data:          numpy ndarray to be visualized.
@@ -1126,7 +1126,8 @@ def inspect(
     app = QApplication([app_label])
     main_widget = Inspector(data, data_type=data_type,
         display_settings=display_settings,
-        initial_window_size=initial_window_size,
+        initial_window_size=None if initial_window_size is None else
+            QSize(initial_window_size[0], initial_window_size[1]),
         window_title=label)
     main_widget.show()
     rc = app.exec_()
