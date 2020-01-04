@@ -42,6 +42,7 @@ Another exemplary screenshot (visualizing a mask image):<br/>
 
 TODO sintel flow vis
 TODO same window size for screenshots
+TODO double-ended slider
 
 ## UI Documentation
 * To inspect a data point/pixel, just move the mouse above it.
