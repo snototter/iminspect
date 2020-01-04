@@ -23,6 +23,10 @@ if __name__ == "__main__":
     lena = imutils.imread('lena.jpg')
     inspect(lena, label='Demo RGB [{}]'.format(lena.dtype))
 
+
+    lena = imutils.imread('lena-alpha.png')
+    inspect(lena, label='Demo RGBA [{}]'.format(lena.dtype))
+
     # Exemplary weight matrix
     weights = imutils.imread('peaks.png', mode='L')
     # Show as float data type, data range [-0.5, 0.5]
@@ -33,18 +37,9 @@ if __name__ == "__main__":
     mask = weights > 127
     _, display_settings = inspect(mask, display_settings=display_settings)
 
-    # # Inspect an integer label image
-    # lbls = np.zeros(mask.shape, dtype=np.int16)
-    # lbls[weights < 20] = 3
-    # lbls[mask] = -23
-    # inspector.inspect(lbls, is_categoric=True)
-
-    # # Inspect an image with 256 labels
-    # inspector.inspect(weights, is_categoric=True)
-
     # Inspect an image with 11 labels
     cats = (weights / 25).astype(np.int16) - 7
-    _, display_settings = inspect(cats, data_type=DataType.CATEGORIC, display_settings=display_settings)
+    _, display_settings = inspect(cats, data_type=DataType.CATEGORICAL, display_settings=display_settings)
 
     # Inspect a depth image
     depth = imutils.imread('depth.png')

@@ -91,7 +91,7 @@ class ColorBar(QWidget):
         self._is_boolean = b
 
     def setCategories(self, c):
-        # If the visualized data is categoric (i.e. a label image), set the unique categories!
+        # If the visualized data is categorical (i.e. a label image), set the unique categories!
         self._categories = c
 
     def setLimits(self, limits):
@@ -213,7 +213,7 @@ class DataType(Enum):
     COLOR = 0
     MONOCHROME = 1
     BOOL = 2
-    CATEGORIC = 3
+    CATEGORICAL = 3
     FLOW = 4
     DEPTH = 5
 
@@ -226,7 +226,7 @@ class DataType(Enum):
             return 'monochrome'
         elif dt == DataType.BOOL:
             return 'mask'
-        elif dt == DataType.CATEGORIC:
+        elif dt == DataType.CATEGORICAL:
             return 'labels'
         elif dt == DataType.FLOW:
             return 'flow'
@@ -243,7 +243,7 @@ class DataType(Enum):
             * data.dtype is bool: DataType.BOOL
             * data.dtype in {uint8, float32, float64}: DataType.MONOCHROME
             * data.dtype in {uint16, int32}: DataType.DEPTH
-            * else: DataType.CATEGORIC
+            * else: DataType.CATEGORICAL
         * HxWx2: DataType.FLOW
         * HxWx3: DataType.COLOR
         """
@@ -255,11 +255,11 @@ class DataType(Enum):
             elif npdata.dtype in [np.dtype('uint16'), np.dtype('int32')]:
                 return DataType.DEPTH
             else:
-                return DataType.CATEGORIC
+                return DataType.CATEGORICAL
         elif npdata.ndim == 3:
             if npdata.shape[2] == 2:
                 return DataType.FLOW
-            elif npdata.shape[2] == 3:
+            elif npdata.shape[2] == 3 or npdata.shape[2] == 4:
                 return DataType.COLOR
             else:
                 raise ValueError('Input data with %d channels is not supported' % npdata.shape[2])
@@ -291,7 +291,7 @@ class OpenInspectionFileDialog(QDialog):
             [(DataType.COLOR, 'Color'),
             (DataType.MONOCHROME, 'Monochrome'),
             (DataType.BOOL, 'Boolean Mask'),
-            (DataType.CATEGORIC, 'Categories / Labels'),
+            (DataType.CATEGORICAL, 'Categories / Labels'),
             (DataType.DEPTH, 'Depth'),
             (DataType.FLOW, 'Optical Flow')])
         if current_data_type is not None:
@@ -570,7 +570,7 @@ class Inspector(QMainWindow):
             self._data_limits = [float(v) for v in self._data_limits]
             self.__fmt_fx = fmtb
             self._colorbar.setBoolean(True)
-        elif self._data_type == DataType.CATEGORIC:
+        elif self._data_type == DataType.CATEGORICAL:
             self.__fmt_fx = fmti
             self._data_categories, ic = np.unique(self._data, return_inverse=True)
             self._data_inverse_categories = ic.reshape(self._data.shape)
@@ -581,7 +581,7 @@ class Inspector(QMainWindow):
         # Prepare QLabel and stdout message:
         if self._data_type == DataType.BOOL:
             lbl_txt += '<tr><td colspan="2"><b>Binary mask.</b></td></tr>'
-        elif self._data_type == DataType.CATEGORIC:
+        elif self._data_type == DataType.CATEGORICAL:
             stdout_str.append('Label image with {:d} categories'.format(len(self._data_categories)))
             lbl_txt += '<tr><td colspan="2"><b>Label image, {:d} classes.</b></td></tr>'.format(len(self._data_categories))
         else:
@@ -680,7 +680,7 @@ class Inspector(QMainWindow):
             self._layer_dropdown.setToolTip('Select which layer to visualize')
             input_layout.addWidget(self._layer_dropdown)
 
-        if self._is_single_channel or self._data_type == DataType.CATEGORIC:
+        if self._is_single_channel or self._data_type == DataType.CATEGORICAL:
             self._checkbox_global_limits = None
         else:
             self._checkbox_global_limits = inputs.CheckBoxWidget(
@@ -864,7 +864,7 @@ class Inspector(QMainWindow):
         else:
             cm = colormaps.by_name(Inspector.VIS_COLORMAPS[vis_selection])
 
-            if self._data_type == DataType.CATEGORIC:
+            if self._data_type == DataType.CATEGORICAL:
                 pc = imvis.pseudocolor(self._data_inverse_categories,
                     color_map=cm, limits=[0, len(self._data_categories)-1])
             else:
@@ -925,7 +925,7 @@ class Inspector(QMainWindow):
         the data point at the cursor position. Requires result of _queryDataLocation
         as input.
         """
-        s = query['pos'] + ', ' + ('Category' if self._data_type == DataType.CATEGORIC
+        s = query['pos'] + ', ' + ('Category' if self._data_type == DataType.CATEGORICAL
             else ('Flow' if self._data_type == DataType.FLOW else 'Raw data'))\
             + ': ' + query['rawstr']
         if query['currlayer'] is not None:
@@ -940,7 +940,7 @@ class Inspector(QMainWindow):
         as input.
         """
         s = '<table><tr><td>Position:</td><td>' + query['pos'] + '</td></tr>'
-        s += '<tr><td>' + ('Category' if self._data_type == DataType.CATEGORIC
+        s += '<tr><td>' + ('Category' if self._data_type == DataType.CATEGORICAL
             else ('Flow' if self._data_type == DataType.FLOW else 'Raw data')) \
             + ':</td><td>' + query['rawstr'] + '</td></tr>'
         if query['currlayer'] is not None:
@@ -982,7 +982,7 @@ class Inspector(QMainWindow):
                 im_mode = {
                     DataType.COLOR: 'RGB',
                     DataType.MONOCHROME: 'L',
-                    DataType.CATEGORIC: 'I',
+                    DataType.CATEGORICAL: 'I',
                     DataType.BOOL: 'L',
                     DataType.DEPTH: 'I'
                 }
@@ -1080,13 +1080,12 @@ def inspect(
                      * data.dtype is bool: DataType.BOOL
                      * data.dtype in {uint8, float32, float64}: DataType.MONOCHROME
                      * data.dtype in {uint16, int32}: DataType.DEPTH
-                     * else: DataType.CATEGORIC
+                     * else: DataType.CATEGORICAL
                    * HxWx2: DataType.FLOW
                    * HxWx3: DataType.COLOR
-
                    For example, if you have an int32 image you want to visualize
-                   as class labels, specify data_type=DataType.CATEGORIC. The
-                   inspector's guess would be depth data.
+                   as class labels (instead of depth), specify 
+                   data_type=DataType.CATEGORICAL.
     flip_channels: this qt window works with RGB images, so flip_channels must
                    be set True if your data is BGR.
     label:         optional window title.

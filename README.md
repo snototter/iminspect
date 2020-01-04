@@ -4,11 +4,24 @@
 
 A python utility package for image/matrix visualization.
 
+Moving from MATLAB to python I was missing basic inspection tools for image data.
+Thus, `iminspect` provides a collection of basic visualization/inspection capabilities along with a minimalist Qt-based GUI.
+The goal is to allow quick and easy visualization/analysis of:
+* color images,
+* monochrome images (i.e. any type of 2D matrices),
+* label images (i.e. categorical data),
+* binary masks,
+* depth maps, and
+* optical flow data.
+
+TODO test RGBA input
+
 ## Dependencies
 * `numpy`, for matrix manipulation
 * `PyQt5`, for the graphical user interface
 * `qimage2ndarray`, to convert numpy ndarrays to Qt images
 * `vito`, a lightweight vision tool package
+
 
 ## Example usage:
 ```python
@@ -19,10 +32,10 @@ import numpy as np
 inspect(np.random.rand(4096,4096) - 0.5)
 
 # Show as class labels:
-inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), data_type=DataType.CATEGORIC)
+inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), data_type=DataType.CATEGORICAL)
 ```
 
-Exemplary screenshot (visualizing categoric data, i.e. labels):<br/>
+Exemplary screenshot (visualizing categorical data, i.e. labels):<br/>
 ![Screenshot](https://github.com/snototter/iminspect/blob/master/iminspect.jpg?raw=true "iminspect GUI")
 
 Another exemplary screenshot (visualizing a mask image):<br/>
@@ -54,6 +67,8 @@ Another exemplary screenshot (visualizing a mask image):<br/>
   * Support saving visualization and raw input data to disk.
   * Added shorthand wrapper to `inspect()` call.
   * UI improvements/layout changes.
+  * Fixed typos such as `DataType.CATEGORICAL`.
+  * Added support for partially transparent images (i.e. RGBA).
 * `1.0.0`
   * Major code refactoring: use data type enum instead of various flags (this breaks previous inspect() calls).
   * Optical flow support.
@@ -79,3 +94,4 @@ Another exemplary screenshot (visualizing a mask image):<br/>
 
 ## Known Issues
 * Incrementally in-/decreasing the zoom factor worked "good enough", thus I didn't bother in making it more complex/user-friendly.
+
