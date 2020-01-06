@@ -34,17 +34,15 @@ inspect(np.random.rand(4096,4096) - 0.5)
 inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), data_type=DataType.CATEGORICAL)
 ```
 
-Exemplary screenshot (visualizing categorical data, i.e. labels):<br/>
+Example: visualizing categorical data (i.e. labels)<br/>
 ![Screenshot categorical data](https://github.com/snototter/iminspect/blob/master/screenshots/categorical.jpg?raw=true "iminspect GUI")
 
-Exemplary screenshot (visualizing a mask image):<br/>
+Example: visualizing a mask image<br/>
 ![Screenshot binary data](https://github.com/snototter/iminspect/blob/master/screenshots/mask.jpg?raw=true "iminspect GUI")
 
-Exemplary screenshot (visualizing optical flow):<br/>
-![Screenshot optical flow](https://github.com/snototter/iminspect/blob/master/screenshots/flow-uv.jpg?raw=true "iminspect GUI")  ![Screenshot RGB](https://github.com/snototter/iminspect/blob/master/screenshots/flow-rgb.jpg?raw=true "iminspect GUI")
-TODO sintel flow vis
-TODO same window size for screenshots
-TODO double-ended slider
+Example: visualizing optical flow<br/>
+![Screenshot optical flow](https://github.com/snototter/iminspect/blob/master/screenshots/flow-uv.jpg?raw=true "iminspect GUI")
+
 
 ## UI Documentation
 * To inspect a data point/pixel, just move the mouse above it.
