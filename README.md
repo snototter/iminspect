@@ -94,8 +94,8 @@ Example: visualizing optical flow<br/>
 * `0.1.0` - Initial public release.
 
 
-## Upcoming Changes/Known Issues
-* Usability: Incrementally in-/decreasing the zoom factor worked "good enough" so far, however, "fast zooming" seems a bit "too fast" at times (especially for smaller input images).
+## Upcoming Changes/Nice-to-have
+* Usability: Incrementally in-/decreasing the zoom factor worked "good enough" so far, however, "fast zooming" seems a bit "too fast" sometimes.
 * Issue: Initial window resize won't scale to the exact specified size (additionally, QApplication...processEvents() won't finish resizing - image canvas widget will be resized "shortly" after a second time)
 * Feature: Implement a range slider to change visualization limits on-the-fly.
 * Feature: Extend flow visualization, i.e. if data is a rgb/flow tuple, show both next to each other.

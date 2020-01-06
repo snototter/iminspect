@@ -385,8 +385,6 @@ class ImageViewer(QScrollArea):
         h2 = float(self._canvas.pixmap().height())
         a2 = w2 / h2
         self._img_scale = w1 / w2 if a2 >= a1 else h1 / h2
-        print(self._img_scale, self.size(), 'TODO FIXME')
-        # TODO check how to invoke display update thread!!!
         self.paintCanvas()
 
     def setScale(self, scale):
