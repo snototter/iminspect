@@ -248,7 +248,8 @@ class DataType(Enum):
             * data.dtype in {uint16, int32}: DataType.DEPTH
             * else: DataType.CATEGORICAL
         * HxWx2: DataType.FLOW
-        * HxWx3: DataType.COLOR
+        * HxWx3 or HxWx4: DataType.COLOR
+        * HxWxC, C>4: DataType.MULTICHANNEL
         """
         if npdata.ndim < 3 or (npdata.ndim == 3 and npdata.shape[2] == 1):
             if npdata.dtype is np.dtype('bool'):
