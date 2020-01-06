@@ -35,11 +35,13 @@ inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), data_type=DataType.C
 ```
 
 Exemplary screenshot (visualizing categorical data, i.e. labels):<br/>
-![Screenshot](https://github.com/snototter/iminspect/blob/master/iminspect.jpg?raw=true "iminspect GUI")
+![Screenshot categorical data](https://github.com/snototter/iminspect/blob/master/screenshots/categorical.jpg?raw=true "iminspect GUI")
 
-Another exemplary screenshot (visualizing a mask image):<br/>
-![Screenshot](https://github.com/snototter/iminspect/blob/master/iminspect-mask.jpg?raw=true "iminspect GUI")
+Exemplary screenshot (visualizing a mask image):<br/>
+![Screenshot binary data](https://github.com/snototter/iminspect/blob/master/screenshots/mask.jpg?raw=true "iminspect GUI")
 
+Exemplary screenshot (visualizing optical flow):<br/>
+![Screenshot optical flow](https://github.com/snototter/iminspect/blob/master/screenshots/flow-uv.jpg?raw=true "iminspect GUI")  ![Screenshot RGB](https://github.com/snototter/iminspect/blob/master/screenshots/flow-rgb.jpg?raw=true "iminspect GUI")
 TODO sintel flow vis
 TODO same window size for screenshots
 TODO double-ended slider
@@ -94,6 +96,11 @@ TODO double-ended slider
 * `0.1.0` - Initial public release.
 
 
-## Known Issues
-* Incrementally in-/decreasing the zoom factor worked "good enough", thus I didn't bother in making it more complex/user-friendly.
+## Upcoming Changes/Known Issues
+* Usability: Incrementally in-/decreasing the zoom factor worked "good enough" so far, however, "fast zooming" seems a bit "too fast" at times (especially for smaller input images).
+* Issue: Initial window resize won't scale to the exact specified size (additionally, QApplication...processEvents() won't finish resizing - image canvas widget will be resized "shortly" after a second time)
+* Feature: Implement a range slider to change visualization limits on-the-fly.
+* Feature: Extend flow visualization, i.e. if data is a rgb/flow tuple, show both next to each other.
+  * Zoom/scroll actions should be linked.
+  * Tool tips should show on both viewers.
 

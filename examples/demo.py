@@ -21,8 +21,7 @@ from vito import flowutils
 if __name__ == "__main__":
     # Visualize standard RGB image
     lena = imutils.imread('lena.jpg')
-    inspect(lena, label='Demo RGB [{}]'.format(lena.dtype), initial_window_size=(400, 600))
-
+    inspect(lena, label='Demo RGB [{}]'.format(lena.dtype))
 
     lena = imutils.imread('lena-alpha.png')
     inspect(lena, label='Demo RGBA [{}]'.format(lena.dtype))
