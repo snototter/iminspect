@@ -65,6 +65,8 @@ Example: visualizing optical flow<br/>
 
 
 ## Changelog
+* Upcoming
+  * Support multi-channel input data (with more than 4 channels).
 * `1.1.0`
   * Support saving visualization and raw input data to disk.
   * Added shorthand wrapper to `inspect()` call.
@@ -104,4 +106,3 @@ Example: visualizing optical flow<br/>
 * [ ] Support hyperspectral data with more than 4 channels
 * [ ] Refactor inspector into inspection widget (move open/save to permanent status bar widget)
 * [ ] Support tuple input for data & type (show multiple inspection widgets with linked axes)
-

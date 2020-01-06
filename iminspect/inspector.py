@@ -283,11 +283,19 @@ class OpenInspectionFileDialog(QDialog):
     def _prepareLayout(self, current_data_type):
         self.setWindowTitle('Open File')
         layout = QVBoxLayout()
-        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*)'
+        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;NumPy Arrays (*.npy);;All Files (*.*)'
+        if current_data_type is None:
+            initial_filter = ''
+        elif current_data_type == DataType.FLOW:
+            initial_filter = 'Optical Flow (*.flo)'
+        elif current_data_type == DataType.MULTICHANNEL:
+            initial_filter = 'NumPy Arrays (*.npy)'
+        else:
+            initial_filter = ''
         self._file_widget = inputs.SelectDirEntryWidget('File:',
             inputs.SelectDirEntryType.FILENAME_OPEN, parent=self,
             filters=file_filters,
-            initial_filter='' if current_data_type is None or current_data_type != DataType.FLOW else 'Optical Flow (*.flo)',
+            initial_filter=initial_filter,
             min_label_width=None, relative_base_path=None)
         self._file_widget.value_changed.connect(self._fileSelected)
         layout.addWidget(self._file_widget)
@@ -324,8 +332,11 @@ class OpenInspectionFileDialog(QDialog):
     @pyqtSlot(object)
     def _fileSelected(self, filename):
         self._filename = filename
-        if self._filename is not None and self._filename.endswith('.flo'):
+        if self._filename is not None and self._filename.lower().endswith('.flo'):
             self._type_widget.set_value(DataType.FLOW)
+            self._type_widget.setEnabled(False)
+        elif self._filename is not None and self._filename.lower().endswith('.npy'):
+            self._type_widget.set_value(DataType.MULTICHANNEL)
             self._type_widget.setEnabled(False)
         else:
             # Change to an image type if flow is currently selected
@@ -399,6 +410,12 @@ class FilenameUtils(object):
         return FilenameUtils.ensureFileExtension(
             filename, ['.flo'])
 
+    @staticmethod
+    def ensureNumpyExtension(filename):
+        """Ensures that the given filename has the .npy extension."""
+        return FilenameUtils.ensureFileExtension(
+            filename, ['.npy'])
+
 
 class SaveInspectionFileDialog(QDialog):
     SAVE_VISUALIZATION = 0
@@ -414,12 +431,17 @@ class SaveInspectionFileDialog(QDialog):
     def _prepareLayout(self, data_type):
         self.setWindowTitle('Save File')
         layout = QVBoxLayout()
-        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;All Files (*.*)'
+        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;NumPy Arrays (*.npy);;All Files (*.*)'
+        if data_type == DataType.FLOW:
+            initial_filter = 'Optical Flow (*.flo)'
+        elif data_type == DataType.MULTICHANNEL:
+            initial_filter = 'NumPy Arrays (*.npy)'
+        else:
+            initial_filter = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm)'
         self._file_widget = inputs.SelectDirEntryWidget('File:',
             inputs.SelectDirEntryType.FILENAME_SAVE, parent=self,
             filters=file_filters,
-            initial_filter='Optical Flow (*.flo)' if data_type == DataType.FLOW
-                else 'Images (*.bmp *.jpg *.jpeg *.png *.ppm)',
+            initial_filter=initial_filter,
             min_label_width=None, relative_base_path=None)
         self._file_widget.value_changed.connect(self._fileSelected)
         layout.addWidget(self._file_widget)
@@ -1002,6 +1024,8 @@ class Inspector(QMainWindow):
             filename, data_type = res
             if data_type == DataType.FLOW:
                 data = flowutils.floread(filename)
+            elif data_type == DataType.MULTICHANNEL:
+                data = np.load(filename)
             else:
                 im_mode = {
                     DataType.COLOR: 'RGB',
@@ -1010,7 +1034,6 @@ class Inspector(QMainWindow):
                     DataType.BOOL: 'L',
                     DataType.DEPTH: 'I'
                 }
-                #TODO how to save multi-channel images?
                 data = imutils.imread(filename, mode=im_mode[data_type])
                 if data_type == DataType.BOOL:
                     data = data.astype(np.bool)
@@ -1047,6 +1070,9 @@ class Inspector(QMainWindow):
             if self._data_type == DataType.FLOW:
                 filename = FilenameUtils.ensureFlowExtension(filename)
                 save_fx = flowutils.flosave
+            elif self._data_type == DataType.MULTICHANNEL:
+                filename = FilenameUtils.ensureNumpyExtension(filename)
+                save_fx = np.save
             else:
                 filename = FilenameUtils.ensureImageExtension(filename)
                 save_fx = imutils.imsave
