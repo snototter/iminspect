@@ -95,10 +95,13 @@ Example: visualizing optical flow<br/>
 
 
 ## Upcoming Changes/Nice-to-have
-* Usability: Incrementally in-/decreasing the zoom factor worked "good enough" so far, however, "fast zooming" seems a bit "too fast" sometimes.
-* Issue: Initial window resize won't scale to the exact specified size (additionally, QApplication...processEvents() won't finish resizing - image canvas widget will be resized "shortly" after a second time)
-* Feature: Implement a range slider to change visualization limits on-the-fly.
-* Feature: Extend flow visualization, i.e. if data is a rgb/flow tuple, show both next to each other.
+* [ ] Usability: Incrementally in-/decreasing the zoom factor worked "good enough" so far, however, "fast zooming" seems a bit "too fast" sometimes.
+* [ ] Issue: Initial window resize won't scale to the exact specified size (additionally, QApplication...processEvents() won't finish resizing - image canvas widget will be resized "shortly" after a second time)
+* [ ] Feature: Implement a range slider to change visualization limits on-the-fly.
+* [ ] Feature: Extend flow visualization, i.e. if data is a rgb/flow tuple, show both next to each other.
   * Zoom/scroll actions should be linked.
   * Tool tips should show on both viewers.
+* [ ] Support hyperspectral data with more than 4 channels
+* [ ] Refactor inspector into inspection widget (move open/save to permanent status bar widget)
+* [ ] Support tuple input for data & type (show multiple inspection widgets with linked axes)
 

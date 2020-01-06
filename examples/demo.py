@@ -23,6 +23,10 @@ if __name__ == "__main__":
     lena = imutils.imread('lena.jpg')
     inspect(lena, label='Demo RGB [{}]'.format(lena.dtype))
 
+    #TODO remove/replace by actual hyperspectral data
+    test = np.dstack((lena, lena))
+    inspect(test)
+
     lena = imutils.imread('lena-alpha.png')
     inspect(lena, label='Demo RGBA [{}]'.format(lena.dtype))
 

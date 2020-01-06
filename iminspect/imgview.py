@@ -8,7 +8,8 @@ from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QScrollArea,\
     QHBoxLayout, QVBoxLayout, QDialog
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QSize, QPointF, QPoint, QRect
-from PyQt5.QtGui import QPainter, QPixmap, QCursor, QBrush, QColor, QPen, QPalette
+from PyQt5.QtGui import QPainter, QPixmap, QCursor, QBrush, QColor, QPen, QPalette, \
+    QImage, QFont
 import qimage2ndarray
 
 
@@ -354,7 +355,24 @@ class ImageViewer(QScrollArea):
                 v.scroll(delta, orientation, notify_linked=False)
 
     def showImage(self, img, adjust_size=True):
-        qimage = qimage2ndarray.array2qimage(img.copy())
+        if img.ndim < 3 or img.shape[2] <= 4:
+            qimage = qimage2ndarray.array2qimage(img.copy())
+        else:
+            img_width = max(400, min(img.shape[1], 1200))
+            img_height = max(200, min(img.shape[0], 1200))
+            qimage = QImage(img_width, img_height, QImage.Format_RGB888)
+            qimage.fill(Qt.white)
+            qp = QPainter()
+            qp.begin(qimage)
+            qp.setRenderHint(QPainter.HighQualityAntialiasing)
+            qp.setPen(QPen(Qt.red))
+            font = QFont()
+            font.setPointSize(20)
+            font.setBold(True)
+            font.setFamily('Helvetica')
+            qp.setFont(font)
+            qp.drawText(qimage.rect(), Qt.AlignCenter, "Error!\nCannot display a\n{:d}-channel image.".format(img.shape[2]))
+            qp.end()
         if qimage.isNull():
             raise ValueError('Invalid image received, cannot convert it to QImage')
         self._img_np = img.copy()

@@ -216,6 +216,7 @@ class DataType(Enum):
     CATEGORICAL = 3
     FLOW = 4
     DEPTH = 5
+    MULTICHANNEL = 6
 
     @staticmethod
     def toStr(dt):
@@ -232,6 +233,8 @@ class DataType(Enum):
             return 'flow'
         elif dt == DataType.DEPTH:
             return 'depth'
+        elif dt == DataType.MULTICHANNEL:
+            return 'multi-channel'
         else:
             raise ValueError('Invalid DataType')
 
@@ -262,7 +265,8 @@ class DataType(Enum):
             elif npdata.shape[2] == 3 or npdata.shape[2] == 4:
                 return DataType.COLOR
             else:
-                raise ValueError('Input data with %d channels is not supported' % npdata.shape[2])
+                # raise ValueError('Input data with %d channels is not supported' % npdata.shape[2])
+                return DataType.MULTICHANNEL
         else:
             raise ValueError('Input data with ndim > 3 (i.e. %d) is not supported!' % npdata.ndim)
 
@@ -293,7 +297,8 @@ class OpenInspectionFileDialog(QDialog):
             (DataType.BOOL, 'Boolean Mask'),
             (DataType.CATEGORICAL, 'Categories / Labels'),
             (DataType.DEPTH, 'Depth'),
-            (DataType.FLOW, 'Optical Flow')])
+            (DataType.FLOW, 'Optical Flow'),
+            (DataType.MULTICHANNEL, 'Multi-channel')])
         if current_data_type is not None:
             self._type_widget.set_value(current_data_type)
         layout.addWidget(self._type_widget)
@@ -322,7 +327,7 @@ class OpenInspectionFileDialog(QDialog):
             self._type_widget.set_value(DataType.FLOW)
             self._type_widget.setEnabled(False)
         else:
-            # Change to an image type if flow was selected
+            # Change to an image type if flow is currently selected
             if self._type_widget.get_input()[0] == DataType.FLOW:
                 self._type_widget.set_value(DataType.COLOR)
             self._type_widget.setEnabled(True)
@@ -1004,6 +1009,7 @@ class Inspector(QMainWindow):
                     DataType.BOOL: 'L',
                     DataType.DEPTH: 'I'
                 }
+                #TODO how to save multi-channel images?
                 data = imutils.imread(filename, mode=im_mode[data_type])
                 if data_type == DataType.BOOL:
                     data = data.astype(np.bool)
@@ -1100,7 +1106,8 @@ def inspect(
                      * data.dtype in {uint16, int32}: DataType.DEPTH
                      * else: DataType.CATEGORICAL
                    * HxWx2: DataType.FLOW
-                   * HxWx3: DataType.COLOR
+                   * HxWx3 or HxWx4: DataType.COLOR
+                   * HxWxC, C>4: DataType.MULTICHANNEL
                    For example, if you have an int32 image you want to visualize
                    as class labels (instead of depth), specify
                    data_type=DataType.CATEGORICAL.
