@@ -266,8 +266,11 @@ class ImageViewer(QScrollArea):
             Qt.Vertical: self.verticalScrollBar(),
             Qt.Horizontal: self.horizontalScrollBar()
         }
-        self.verticalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Vertical))
-        self.horizontalScrollBar().sliderMoved.connect(lambda v: self.sliderChanged(v, Qt.Horizontal))
+        self.verticalScrollBar().valueChanged.connect(lambda v: self.sliderChanged(v, Qt.Vertical))
+        self.horizontalScrollBar().valueChanged.connect(lambda v: self.sliderChanged(v, Qt.Horizontal))
+        #FIXME click on the image and use arrow keys to move - this doesn't tricker sliderMoved; maybe valueChanged?
+        # TODO change scroll to absolute instead of delta (to support linking viewers)
+        #      the canvas signals should be connected to separate scrollRelative slot...
 
     def currentDisplaySettings(self):
         """Query the current zoom/scroll settings, so you can restore them.
@@ -308,8 +311,9 @@ class ImageViewer(QScrollArea):
     def sliderChanged(self, new_value, orientation):
         bar = self._scoll_bars[orientation]
         delta = new_value - bar.value()
+        print('Slider changed to ', new_value, ' delta: ', delta) #FIXME remove
         self.scroll(-delta * 120 / bar.singleStep(), orientation, notify_linked=True)
-
+#FIXME mouse wheel is different from arrow keys, is different across systems, check https://forum.qt.io/topic/80728/qscrollbar-acts-differently-when-pressing-arrow-keys-and-scrolling/4
     def linkViewers(self, viewers):
         """'link_axes'-like behavior: link this ImageViewer to each
         ImageViewer in the given list such that they all zoom/scroll
@@ -346,11 +350,13 @@ class ImageViewer(QScrollArea):
     @pyqtSlot(int, int)
     def scroll(self, delta, orientation, notify_linked=True):
         """Slot for scrollRequest signal of image canvas."""
+        print('  scroll', delta, orientation, notify_linked)
         steps = -delta / 120
         bar = self._scoll_bars[orientation]
         bar.setValue(bar.value() + bar.singleStep() * steps)
         self.viewChanged.emit()
         if notify_linked:
+            print('FIXME REMOVE: notifying others: ', self._linked_viewers)
             for v in self._linked_viewers:
                 v.scroll(delta, orientation, notify_linked=False)
 

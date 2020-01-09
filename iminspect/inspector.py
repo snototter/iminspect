@@ -621,17 +621,12 @@ class InspectionWidget(QWidget):
 
     def setImageScaleAbsolute(self, scale):
         """Adjust the image scale (float)."""
-        print('TODO viewer before', self._img_viewer._img_scale)
         self._img_viewer.setScale(scale)
-        print('after: ', self._img_viewer._img_scale)
         self.update()
         #FIXME imgviewer.imgScaleChanged.connect(self.imgScaleChanged)
 
     def setImageScaleFit(self):
-        print(self._img_viewer._img_scale)
         self._img_viewer.scaleToFitWindow()
-        print('Updated scale!!')
-        print(self._img_viewer._img_scale)
         self.update()
         #FIXME emit signal (or done in imgview?)
 
@@ -708,6 +703,15 @@ class InspectionWidget(QWidget):
                     for c in range(self._visualized_pseudocolor.shape[2])]) \
                     + ']'
         return query
+
+    def linkAxes(self, other_inspection_widgets):
+        self._img_viewer.linkViewers([oiw._img_viewer for oiw in other_inspection_widgets])
+
+    def zoomImage(self, delta):
+        self._img_viewer.zoom(delta)
+
+    def scrollImage(self, delta, orientation):
+        self._img_viewer.scroll(delta, orientation)
 
     def _prepareDataStatistics(self):
         """
@@ -864,7 +868,7 @@ class InspectionWidget(QWidget):
 
         # Label to show important image statistics/information
         self._data_label_scroll_area = QScrollArea()
-        self._data_label_scroll_area.setWidget(QLabel()) #FIXME add dummy label
+        self._data_label_scroll_area.setWidget(QLabel()) #FIXME add dummy label - doesn't work either; check how to deal with the scrollarea issue properly!
         # self._data_label_scroll_area.setWidgetResizable(True)
         self._data_label = QLabel()
         self._data_label.setFrameShape(QFrame.Panel)
@@ -987,7 +991,7 @@ class Inspector(QMainWindow):
         super(Inspector, self).__init__()
         self._initial_window_size = initial_window_size
         self._window_title = window_title
-        self._shortcuts = list()
+        # self._shortcuts = list()
         self._open_file_dialog = None
         self._save_file_dialog = None
         self._main_widget = QWidget()
@@ -1038,13 +1042,14 @@ class Inspector(QMainWindow):
                 if data[idx].shape[0] != data[0].shape[0]\
                         or data[idx].shape[1] != data[0].shape[1]:
                     matching_input_shape = False
-            #TODO should we add stretch or a spacer widget if more than 1 row and last row is not fully filled?
-            # Link image viewers (FIXME) if images have the same resolution
             # Turn off scale display if images have different resolution
-            self._zoom_widget.showScaleLabel(matching_input_shape) # Because the user may show differently sized images. Thus, turn scale display off.
+            self._zoom_widget.showScaleLabel(matching_input_shape)
             if matching_input_shape:
                 for insp in self._inspectors:
                     insp.imgScaleChanged.connect(lambda _,s: self._zoom_widget.setScale(s))
+            #TODO should we add stretch or a spacer widget if more than 1 row and last row is not fully filled?
+            # Link image viewers (FIXME) if images have the same resolution
+                    insp.linkAxes(self._inspectors)
         else:
             # Single image to show, so we only need a single inspection widget
             insp = InspectionWidget(0, data, data_type,
@@ -1133,41 +1138,41 @@ class Inspector(QMainWindow):
         # self._shortcuts.append(self._shortcut_exit)
         # Zooming
         self._shortcut_zoom_in = QShortcut(QKeySequence('Ctrl++'), self)
-        self._shortcut_zoom_in.activated.connect(lambda: self._img_viewer.zoom(120)) #FIXME adjust all shortcuts :-/
+        self._shortcut_zoom_in.activated.connect(lambda: self.zoomImages(120))
         # self._shortcuts.append(self._shortcut_zoom_in)
         self._shortcut_zoom_in_fast = QShortcut(QKeySequence('Ctrl+Shift++'), self)
-        self._shortcut_zoom_in_fast.activated.connect(lambda: self._img_viewer.zoom(1200))
+        self._shortcut_zoom_in_fast.activated.connect(lambda: self.zoomImages(1200))
         # self._shortcuts.append(self._shortcut_zoom_in_fast)
         self._shortcut_zoom_out = QShortcut(QKeySequence('Ctrl+-'), self)
-        self._shortcut_zoom_out.activated.connect(lambda: self._img_viewer.zoom(-120))
+        self._shortcut_zoom_out.activated.connect(lambda: self.zoomImages(-120))
         # self._shortcuts.append(self._shortcut_zoom_out)
         self._shortcut_zoom_out_fast = QShortcut(QKeySequence('Ctrl+Shift+-'), self)
-        self._shortcut_zoom_out_fast.activated.connect(lambda: self._img_viewer.zoom(-1200))
+        self._shortcut_zoom_out_fast.activated.connect(lambda: self.zoomImages(-1200))
         # self._shortcuts.append(self._shortcut_zoom_out_fast)
         # Scrolling
         self._shortcut_scroll_up = QShortcut(QKeySequence('Ctrl+Up'), self)
-        self._shortcut_scroll_up.activated.connect(lambda: self._img_viewer.scroll(120, Qt.Vertical))
+        self._shortcut_scroll_up.activated.connect(lambda: self.scrollImages(120, Qt.Vertical))
         # self._shortcuts.append(self._shortcut_scroll_up)
         self._shortcut_scroll_up_fast = QShortcut(QKeySequence('Ctrl+Shift+Up'), self)
-        self._shortcut_scroll_up_fast.activated.connect(lambda: self._img_viewer.scroll(1200, Qt.Vertical))
+        self._shortcut_scroll_up_fast.activated.connect(lambda: self.scrollImages(1200, Qt.Vertical))
         # self._shortcuts.append(self._shortcut_scroll_up_fast)
         self._shortcut_scroll_down = QShortcut(QKeySequence('Ctrl+Down'), self)
-        self._shortcut_scroll_down.activated.connect(lambda: self._img_viewer.scroll(-120, Qt.Vertical))
+        self._shortcut_scroll_down.activated.connect(lambda: self.scrollImages(-120, Qt.Vertical))
         # self._shortcuts.append(self._shortcut_scroll_down)
         self._shortcut_scroll_down_fast = QShortcut(QKeySequence('Ctrl+Shift+Down'), self)
-        self._shortcut_scroll_down_fast.activated.connect(lambda: self._img_viewer.scroll(-1200, Qt.Vertical))
+        self._shortcut_scroll_down_fast.activated.connect(lambda: self.scrollImages(-1200, Qt.Vertical))
         # self._shortcuts.append(self._shortcut_scroll_down_fast)
         self._shortcut_scroll_left = QShortcut(QKeySequence('Ctrl+Left'), self)
-        self._shortcut_scroll_left.activated.connect(lambda: self._img_viewer.scroll(120, Qt.Horizontal))
+        self._shortcut_scroll_left.activated.connect(lambda: self.scrollImages(120, Qt.Horizontal))
         # self._shortcuts.append(self._shortcut_scroll_left)
         self._shortcut_scroll_left_fast = QShortcut(QKeySequence('Ctrl+Shift+Left'), self)
-        self._shortcut_scroll_left_fast.activated.connect(lambda: self._img_viewer.scroll(1200, Qt.Horizontal))
+        self._shortcut_scroll_left_fast.activated.connect(lambda: self.scrollImages(1200, Qt.Horizontal))
         # self._shortcuts.append(self._shortcut_scroll_left_fast)
         self._shortcut_scroll_right = QShortcut(QKeySequence('Ctrl+Right'), self)
-        self._shortcut_scroll_right.activated.connect(lambda: self._img_viewer.scroll(-120, Qt.Horizontal))
+        self._shortcut_scroll_right.activated.connect(lambda: self.scrollImages(-120, Qt.Horizontal))
         # self._shortcuts.append(self._shortcut_scroll_right)
         self._shortcut_scroll_right_fast = QShortcut(QKeySequence('Ctrl+Shift+Right'), self)
-        self._shortcut_scroll_right_fast.activated.connect(lambda: self._img_viewer.scroll(-1200, Qt.Horizontal))
+        self._shortcut_scroll_right_fast.activated.connect(lambda: self.scrollImages(-1200, Qt.Horizontal))
         # self._shortcuts.append(self._shortcut_scroll_right_fast)
         # Scale to fit window
         self._shortcut_scale_fit = QShortcut(QKeySequence('Ctrl+F'), self)
@@ -1176,6 +1181,16 @@ class Inspector(QMainWindow):
         self._shortcut_scale_original = QShortcut(QKeySequence('Ctrl+1'), self)
         self._shortcut_scale_original.activated.connect(self.scaleImagesOriginal)
         # self._shortcuts.append(self._shortcut_scale_original)
+    
+    @pyqtSlot(int)
+    def scrollImages(self, delta, orientation):
+        for insp in self._inspectors:
+            insp.scrollImage(delta, orientation) #FIXME impl
+    
+    @pyqtSlot(int)
+    def zoomImages(self, delta):
+        for insp in self._inspectors:
+            insp.zoomImage(delta) #FIXME impl
 
     @pyqtSlot()
     def scaleImagesOriginal(self):
