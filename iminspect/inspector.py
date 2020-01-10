@@ -542,12 +542,12 @@ class InspectionWidget(QWidget):
             self._checkbox_global_limits = None
         else:
             self._checkbox_global_limits = inputs.CheckBoxWidget(
-                'Same limits for all channels:',
+                'Same limits across channels:',
                 checkbox_left=False, is_checked=True)
             self._checkbox_global_limits.value_changed.connect(self.__updateDisplay)
             self._checkbox_global_limits.value_changed.connect(lambda: self.showTooltipRequest.emit(self._inspector_id, None))
             self._checkbox_global_limits.setToolTip(
-                'If checked, visualization uses min/max from data[:] instead of data[:, :, channel]')
+                'If <b>checked</b>, visualization uses <b>min/max</b> from <tt>data[:]</tt> instead of <tt>data[:, :, channel]</tt>')
             input_layout.addWidget(self._checkbox_global_limits)
 
         # Let user select the visualization method
@@ -838,46 +838,48 @@ class Inspector(QMainWindow):
 
     def __addShortcuts(self):
         # Open file
-        self._shortcut_open = QShortcut(QKeySequence('Ctrl+O'), self)
-        self._shortcut_open.activated.connect(self.__onOpenShortcut)
+        shortcut_open = QShortcut(QKeySequence('Ctrl+O'), self)
+        shortcut_open.activated.connect(self.__onOpenShortcut)
         # Save file
-        self._shortcut_save = QShortcut(QKeySequence('Ctrl+S'), self)
-        self._shortcut_save.activated.connect(self.__onSaveShortcut)
+        shortcut_save = QShortcut(QKeySequence('Ctrl+S'), self)
+        shortcut_save.activated.connect(self.__onSaveShortcut)
         # Close window
-        self._shortcut_exit = QShortcut(QKeySequence('Ctrl+Q'), self)
-        self._shortcut_exit.activated.connect(QApplication.instance().quit)
+        shortcut_exit_q = QShortcut(QKeySequence('Ctrl+Q'), self)
+        shortcut_exit_q.activated.connect(QApplication.instance().quit)
+        shortcut_exit_w = QShortcut(QKeySequence('Ctrl+W'), self)
+        shortcut_exit_w.activated.connect(QApplication.instance().quit)
         # Zooming
-        self._shortcut_zoom_in = QShortcut(QKeySequence('Ctrl++'), self)
-        self._shortcut_zoom_in.activated.connect(lambda: self.zoomImages(120))
-        self._shortcut_zoom_in_fast = QShortcut(QKeySequence('Ctrl+Shift++'), self)
-        self._shortcut_zoom_in_fast.activated.connect(lambda: self.zoomImages(1200))
-        self._shortcut_zoom_out = QShortcut(QKeySequence('Ctrl+-'), self)
-        self._shortcut_zoom_out.activated.connect(lambda: self.zoomImages(-120))
-        self._shortcut_zoom_out_fast = QShortcut(QKeySequence('Ctrl+Shift+-'), self)
-        self._shortcut_zoom_out_fast.activated.connect(lambda: self.zoomImages(-1200))
+        shortcut_zoom_in = QShortcut(QKeySequence('Ctrl++'), self)
+        shortcut_zoom_in.activated.connect(lambda: self.zoomImages(120))
+        shortcut_zoom_in_fast = QShortcut(QKeySequence('Ctrl+Shift++'), self)
+        shortcut_zoom_in_fast.activated.connect(lambda: self.zoomImages(1200))
+        shortcut_zoom_out = QShortcut(QKeySequence('Ctrl+-'), self)
+        shortcut_zoom_out.activated.connect(lambda: self.zoomImages(-120))
+        shortcut_zoom_out_fast = QShortcut(QKeySequence('Ctrl+Shift+-'), self)
+        shortcut_zoom_out_fast.activated.connect(lambda: self.zoomImages(-1200))
         # Scrolling
-        self._shortcut_scroll_up = QShortcut(QKeySequence('Ctrl+Up'), self)
-        self._shortcut_scroll_up.activated.connect(lambda: self.scrollImages(120, Qt.Vertical))
-        self._shortcut_scroll_up_fast = QShortcut(QKeySequence('Ctrl+Shift+Up'), self)
-        self._shortcut_scroll_up_fast.activated.connect(lambda: self.scrollImages(1200, Qt.Vertical))
-        self._shortcut_scroll_down = QShortcut(QKeySequence('Ctrl+Down'), self)
-        self._shortcut_scroll_down.activated.connect(lambda: self.scrollImages(-120, Qt.Vertical))
-        self._shortcut_scroll_down_fast = QShortcut(QKeySequence('Ctrl+Shift+Down'), self)
-        self._shortcut_scroll_down_fast.activated.connect(lambda: self.scrollImages(-1200, Qt.Vertical))
-        self._shortcut_scroll_left = QShortcut(QKeySequence('Ctrl+Left'), self)
-        self._shortcut_scroll_left.activated.connect(lambda: self.scrollImages(120, Qt.Horizontal))
-        self._shortcut_scroll_left_fast = QShortcut(QKeySequence('Ctrl+Shift+Left'), self)
-        self._shortcut_scroll_left_fast.activated.connect(lambda: self.scrollImages(1200, Qt.Horizontal))
-        self._shortcut_scroll_right = QShortcut(QKeySequence('Ctrl+Right'), self)
-        self._shortcut_scroll_right.activated.connect(lambda: self.scrollImages(-120, Qt.Horizontal))
-        self._shortcut_scroll_right_fast = QShortcut(QKeySequence('Ctrl+Shift+Right'), self)
-        self._shortcut_scroll_right_fast.activated.connect(lambda: self.scrollImages(-1200, Qt.Horizontal))
+        shortcut_scroll_up = QShortcut(QKeySequence('Ctrl+Up'), self)
+        shortcut_scroll_up.activated.connect(lambda: self.scrollImages(120, Qt.Vertical))
+        shortcut_scroll_up_fast = QShortcut(QKeySequence('Ctrl+Shift+Up'), self)
+        shortcut_scroll_up_fast.activated.connect(lambda: self.scrollImages(1200, Qt.Vertical))
+        shortcut_scroll_down = QShortcut(QKeySequence('Ctrl+Down'), self)
+        shortcut_scroll_down.activated.connect(lambda: self.scrollImages(-120, Qt.Vertical))
+        shortcut_scroll_down_fast = QShortcut(QKeySequence('Ctrl+Shift+Down'), self)
+        shortcut_scroll_down_fast.activated.connect(lambda: self.scrollImages(-1200, Qt.Vertical))
+        shortcut_scroll_left = QShortcut(QKeySequence('Ctrl+Left'), self)
+        shortcut_scroll_left.activated.connect(lambda: self.scrollImages(120, Qt.Horizontal))
+        shortcut_scroll_left_fast = QShortcut(QKeySequence('Ctrl+Shift+Left'), self)
+        shortcut_scroll_left_fast.activated.connect(lambda: self.scrollImages(1200, Qt.Horizontal))
+        shortcut_scroll_right = QShortcut(QKeySequence('Ctrl+Right'), self)
+        shortcut_scroll_right.activated.connect(lambda: self.scrollImages(-120, Qt.Horizontal))
+        shortcut_scroll_right_fast = QShortcut(QKeySequence('Ctrl+Shift+Right'), self)
+        shortcut_scroll_right_fast.activated.connect(lambda: self.scrollImages(-1200, Qt.Horizontal))
         # Scale to fit window
-        self._shortcut_scale_fit = QShortcut(QKeySequence('Ctrl+F'), self)
-        self._shortcut_scale_fit.activated.connect(self.scaleImagesFit)
+        shortcut_scale_fit = QShortcut(QKeySequence('Ctrl+F'), self)
+        shortcut_scale_fit.activated.connect(self.scaleImagesFit)
         # Scale to original size
-        self._shortcut_scale_original = QShortcut(QKeySequence('Ctrl+1'), self)
-        self._shortcut_scale_original.activated.connect(self.scaleImagesOriginal)
+        shortcut_scale_original = QShortcut(QKeySequence('Ctrl+1'), self)
+        shortcut_scale_original.activated.connect(self.scaleImagesOriginal)
 
     @pyqtSlot(int)
     def scrollImages(self, delta, orientation):

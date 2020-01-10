@@ -69,6 +69,7 @@ class CheckBoxWidget(InputWidget):
             layout.addWidget(lbl)
             layout.addWidget(self._cb)
         layout.addStretch()
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
     def get_input(self):
@@ -105,6 +106,7 @@ class SliderSelectionWidget(InputWidget):
         self._slider_label = QLabel(' ')
         layout.addWidget(self._slider_label)
 
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
         if initial_value is None:
@@ -147,20 +149,19 @@ class DropDownSelectionWidget(InputWidget):
         if min_label_width is not None:
             lbl.setMinimumWidth(min_label_width)
         layout.addWidget(lbl)
-
         layout.addStretch()
 
         self._combo = QComboBox(self)
         for v in values:
             self._combo.addItem(v[1], v[0])
-        self._combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self._combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         if initial_selected_index is not None:
             self._combo.setCurrentIndex(initial_selected_index)
 
         self._combo.activated.connect(self._emit_value_change)
-
         layout.addWidget(self._combo)
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
     def select_index(self, idx):
@@ -223,6 +224,7 @@ class SizeWidget(InputWidget):
             btn16to9.clicked.connect(self.__complete_16to9)
             btn16to9.setMinimumWidth(40)
             layout.addWidget(btn16to9)
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
     def __wh(self):
@@ -282,7 +284,7 @@ class Ip4InputWidget(InputWidget):
         if ip_address is not None:
             self._ip_edit.setText(ip_address)
         layout.addWidget(self._ip_edit)
-
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
     def get_input(self):
@@ -341,7 +343,7 @@ class SelectDirEntryWidget(InputWidget):
             self._btn.clicked.connect(self.__select_save_file)
         else:
             raise NotImplementedError('Type not supported')
-
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
     def open_dialog(self):
@@ -407,6 +409,7 @@ class RoiSelectWidget(InputWidget):
         btn = QPushButton('From Image')
         btn.clicked.connect(self.__from_image)
         layout.addWidget(btn)
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
     def get_input(self):
