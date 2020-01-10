@@ -37,7 +37,7 @@ inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), data_type=DataType.C
 # corresponding depth, or RGB and corresponding optical flow:
 inspect((data_color, data_depth))
 # or specify the data types manually:
-inspect((x, y, data_type=(DataType.COLOR, DataType.DEPTH)))
+inspect((rgb, flow), data_type=(DataType.COLOR, DataType.FLOW)))
 ```
 
 Example: visualizing categorical data (i.e. labels)<br/>
