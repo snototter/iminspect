@@ -256,8 +256,8 @@ class ImageViewer(QScrollArea):
         self._canvas.rectSelected.connect(self._emitRectSelected)
 
         self._canvas.zoomRequest.connect(self.zoom)
-        self._canvas.scrollRequest.connect(self.scroll)
-        self._canvas.mouseMoved.connect(self.mouseMovedHandler)
+        self._canvas.scrollRequest.connect(self.scrollRelative)
+        self._canvas.mouseMoved.connect(self.mouseMoved)
         self._canvas.imgScaleChanged.connect(self.imgScaleChanged)
 
         self.setWidget(self._canvas)
@@ -266,11 +266,13 @@ class ImageViewer(QScrollArea):
             Qt.Vertical: self.verticalScrollBar(),
             Qt.Horizontal: self.horizontalScrollBar()
         }
-        self.verticalScrollBar().valueChanged.connect(lambda v: self.sliderChanged(v, Qt.Vertical))
-        self.horizontalScrollBar().valueChanged.connect(lambda v: self.sliderChanged(v, Qt.Horizontal))
-        #FIXME click on the image and use arrow keys to move - this doesn't tricker sliderMoved; maybe valueChanged?
-        # TODO change scroll to absolute instead of delta (to support linking viewers)
-        #      the canvas signals should be connected to separate scrollRelative slot...
+        # Observe the valueChanged signal so we know whether the user dragged
+        # a scroll bar or used the keyboard (e.g. arrow keys) to adjust the
+        # bar's position.
+        self.verticalScrollBar().valueChanged.connect(
+            lambda new_value: self.scrollAbsolute(new_value, Qt.Vertical, notify_linked=True))
+        self.horizontalScrollBar().valueChanged.connect(
+            lambda new_value: self.scrollAbsolute(new_value, Qt.Horizontal, notify_linked=True))
 
     def currentDisplaySettings(self):
         """Query the current zoom/scroll settings, so you can restore them.
@@ -303,17 +305,6 @@ class ImageViewer(QScrollArea):
         """Returns the currently applied image scale factor."""
         return self._img_scale
 
-    @pyqtSlot(QPointF)
-    def mouseMovedHandler(self, pixmap_pos):
-        self.mouseMoved.emit(pixmap_pos)
-
-    @pyqtSlot(int, int)
-    def sliderChanged(self, new_value, orientation):
-        bar = self._scoll_bars[orientation]
-        delta = new_value - bar.value()
-        print('Slider changed to ', new_value, ' delta: ', delta) #FIXME remove
-        self.scroll(-delta * 120 / bar.singleStep(), orientation, notify_linked=True)
-#FIXME mouse wheel is different from arrow keys, is different across systems, check https://forum.qt.io/topic/80728/qscrollbar-acts-differently-when-pressing-arrow-keys-and-scrolling/4
     def linkViewers(self, viewers):
         """'link_axes'-like behavior: link this ImageViewer to each
         ImageViewer in the given list such that they all zoom/scroll
@@ -344,23 +335,30 @@ class ImageViewer(QScrollArea):
             # Adjust the scroll bar positions to keep cursor at the same pixel
             px_pos_curr = self._canvas.pixelAtWidgetPos(self._canvas.mapFromGlobal(cursor_pos))
             delta_widget = self._canvas.pixelToWidgetPos(px_pos_curr) - self._canvas.pixelToWidgetPos(px_pos_prev)
-            self.scroll(delta_widget.x()*120/self.horizontalScrollBar().singleStep(), Qt.Horizontal, notify_linked=True)
-            self.scroll(delta_widget.y()*120/self.verticalScrollBar().singleStep(), Qt.Vertical, notify_linked=True)
+            self.scrollRelative(delta_widget.x()*120/self.horizontalScrollBar().singleStep(), Qt.Horizontal, notify_linked=True)
+            self.scrollRelative(delta_widget.y()*120/self.verticalScrollBar().singleStep(), Qt.Vertical, notify_linked=True)
 
     @pyqtSlot(int, int)
-    def scroll(self, delta, orientation, notify_linked=True):
+    def scrollRelative(self, delta, orientation, notify_linked=True):
         """Slot for scrollRequest signal of image canvas."""
-        print('  scroll', delta, orientation, notify_linked)
         steps = -delta / 120
         bar = self._scoll_bars[orientation]
-        bar.setValue(bar.value() + bar.singleStep() * steps)
+        value = bar.value() + bar.singleStep() * steps
+        self.scrollAbsolute(value, orientation, notify_linked=notify_linked)
+
+    @pyqtSlot(int, int)
+    def scrollAbsolute(self, value, orientation, notify_linked=True):
+        """Sets the scrollbar to the given value."""
+        bar = self._scoll_bars[orientation]
+        if value < bar.minimum() or value > bar.maximum():
+            return
+        bar.setValue(value)
         self.viewChanged.emit()
         if notify_linked:
-            print('FIXME REMOVE: notifying others: ', self._linked_viewers)
             for v in self._linked_viewers:
-                v.scroll(delta, orientation, notify_linked=False)
+                v.scrollAbsolute(value, orientation, notify_linked=False)
 
-    def showImage(self, img, adjust_size=True):
+    def showImage(self, img, reset_scale=True):
         if img.ndim < 3 or img.shape[2] <= 4:
             qimage = qimage2ndarray.array2qimage(img.copy())
         else:
@@ -392,9 +390,9 @@ class ImageViewer(QScrollArea):
             self._canvas.setVisible(True)
             self._canvas.adjustSize()
 
-        if adjust_size:
-            # self._img_scale = 1.0
-            self.scaleToFitWindow()
+        if reset_scale:
+            self._img_scale = 1.0
+            # self.scaleToFitWindow()
         self.paintCanvas()
 
     def scaleToFitWindow(self):
@@ -414,6 +412,9 @@ class ImageViewer(QScrollArea):
     def setScale(self, scale):
         self._img_scale = scale
         self.paintCanvas()
+
+    def scale(self):
+        return self._img_scale
 
     def paintCanvas(self):
         if self._img_np is None:

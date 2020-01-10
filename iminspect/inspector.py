@@ -495,6 +495,44 @@ class SaveInspectionFileDialog(QDialog):
         return None
 
 
+class ToolbarFileIOWidget(QWidget):
+    """
+    Provides buttons to issue open/save file requests.
+    """
+    openFileRequest = pyqtSignal()
+    saveFileRequest = pyqtSignal()
+    
+    def __init__(self, vertical=False, icon_size=QSize(20, 20), parent=None):
+        # TODO doc: icon size 20x20 for status bar, 24x24 for inspectionwidget
+        # Theme icons, see
+        # https://specifications.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
+        super(ToolbarFileIOWidget, self).__init__(parent)
+        if vertical:
+            layout = QVBoxLayout()
+        else:
+            layout = QHBoxLayout()
+        btn = QToolButton()
+        btn.setIcon(QIcon.fromTheme('document-open'))
+        btn.setIconSize(icon_size)
+        btn.setToolTip('Open file (Ctrl+O)')
+        btn.clicked.connect(self.openFileRequest)
+        layout.addWidget(btn)
+
+        btn = QToolButton()
+        btn.setIcon(QIcon.fromTheme('document-save-as'))
+        btn.setIconSize(icon_size)
+        btn.setToolTip('Save as... (Ctrl+S)')
+        btn.clicked.connect(self.saveFileRequest)
+        layout.addWidget(btn)
+        # Important: remove margins!
+        layout.setContentsMargins(0, 0, 0, 0)
+        if vertical:
+            layout.setAlignment(Qt.AlignTop)
+        else:
+            layout.setAlignment(Qt.AlignRight)
+        self.setLayout(layout)
+
+
 class ToolbarZoomWidget(QWidget):
     """Provides two clickable icons allowing the user to request the standard
     scalings "zoom-best-fit" and "zoom-original"."""
@@ -546,13 +584,14 @@ class InspectionWidget(QWidget):
 
     #TODO link InspectionWidget
     #TODO doc that datatype depth == monochrome
+    #TODO doc that signals yield the inspector id
 
     # If widget was created with show_toolbars, this signal will
     # be emitted once the user clicks the 'open' button
-    fileOpenRequest = pyqtSignal()
+    fileOpenRequest = pyqtSignal(int)
 
     # Similar to fileOpenRequest, but for the 'save' button
-    fileSaveRequest = pyqtSignal()
+    fileSaveRequest = pyqtSignal(int)
 
     # Emitted whenever the user changes the image scale
     imgScaleChanged = pyqtSignal(int, float)
@@ -567,8 +606,9 @@ class InspectionWidget(QWidget):
     #TODO upon save: get thumbnail for each inspector
 
     def __init__(
-            self, inspector_id, data, data_type,
-            display_settings=None, show_toolbar=True):
+            self,
+            inspector_id, data, data_type,
+            display_settings=None):
         super(InspectionWidget, self).__init__()
         # ID to distinguish signals from different inspectors (used when displaying multiple images)
         self._inspector_id = inspector_id
@@ -584,8 +624,6 @@ class InspectionWidget(QWidget):
         self._visualized_pseudocolor = None
         # Whether the image viewer should be reset (adjust size and translation)
         self._reset_viewer = True
-        # Whether the top-left toolbar (file open, etc.) should be shown
-        self._show_toolbar = show_toolbar
         # Function handle to format data values
         self.__fmt_fx = None
         # Now, show the given data:
@@ -629,6 +667,9 @@ class InspectionWidget(QWidget):
         self._img_viewer.scaleToFitWindow()
         self.update()
         #FIXME emit signal (or done in imgview?)
+    
+    def imageScale(self):
+        return self._img_viewer.scale()
 
     def currentDisplaySettings(self):
         # settings = {
@@ -793,24 +834,15 @@ class InspectionWidget(QWidget):
 
 
     def _resetLayout(self):
-        # Theme icons, see
-        # https://specifications.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
-        if self._show_toolbar:
-            file_layout = QVBoxLayout()
-            btn_open = QPushButton()
-            btn_open.setIcon(QIcon.fromTheme('document-open'))
-            btn_open.setIconSize(QSize(24, 24))
-            btn_open.setToolTip('Open File')
-            btn_open.clicked.connect(self.fileOpenRequest)
-            file_layout.addWidget(btn_open)
-
-            btn_save = QPushButton()
-            btn_save.setIcon(QIcon.fromTheme('document-save-as'))
-            btn_save.setIconSize(QSize(24, 24))
-            btn_save.setToolTip('Save as...')
-            btn_save.clicked.connect(self.fileSaveRequest)
-            file_layout.addWidget(btn_save)
-
+        # Add a file I/O widget to open/save an image from this
+        # inspection widget:
+        file_io_widget = ToolbarFileIOWidget(
+            vertical=True, icon_size=QSize(24, 24))
+        file_io_widget.saveFileRequest.connect(
+            lambda: self.fileSaveRequest.emit(self._inspector_id))
+        file_io_widget.openFileRequest.connect(
+            lambda: self.fileOpenRequest.emit(self._inspector_id))
+        
         input_layout = QVBoxLayout()
         # Let user select a single channel if multi-channel input is provided
         if not self._is_single_channel:
@@ -876,12 +908,10 @@ class InspectionWidget(QWidget):
         self._data_label.setToolTip('Data properties')
 
         # The "menu"/"control bar" inputs/controls looks like:
-        # File I/O  |  Visualization  | Image Information.
+        #   File I/O  |  Visualization  | Image Information.
         top_row_layout = QHBoxLayout()
-        if self._show_toolbar:
-            file_layout.setAlignment(Qt.AlignTop)  # Align I/O buttons top
-            top_row_layout.addLayout(file_layout)
-            top_row_layout.addWidget(inputs.VLine())
+        top_row_layout.addWidget(file_io_widget)
+        top_row_layout.addWidget(inputs.VLine())
         input_layout.setAlignment(Qt.AlignTop)
         top_row_layout.addLayout(input_layout)
         top_row_layout.addWidget(self._data_label_scroll_area)
@@ -918,12 +948,12 @@ class InspectionWidget(QWidget):
         if vis_selection == InspectionWidget.VIS_RAW or not is_single_channel:
             if not is_single_channel and self._data_type == DataType.FLOW:
                 self._visualized_pseudocolor = flowutils.colorize_flow(self._visualized_data)
-                self._img_viewer.showImage(self._visualized_pseudocolor)
+                self._img_viewer.showImage(self._visualized_pseudocolor, reset_scale=self._reset_viewer)
                 self._colorbar.setFlowWheel(True)
                 self._colorbar.setVisible(True)
                 self._colorbar.update()
             else:
-                self._img_viewer.showImage(self._visualized_data, adjust_size=self._reset_viewer)
+                self._img_viewer.showImage(self._visualized_data, reset_scale=self._reset_viewer)
                 self._colorbar.setVisible(False)
                 self._visualized_pseudocolor = None
         else:
@@ -943,7 +973,7 @@ class InspectionWidget(QWidget):
                 self._colorbar.setLimits(limits)
                 pc = imvis.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
             self._visualized_pseudocolor = pc
-            self._img_viewer.showImage(pc, adjust_size=self._reset_viewer)
+            self._img_viewer.showImage(pc, reset_scale=self._reset_viewer)
             self._colorbar.setColormap(cm)
             self._colorbar.setFlowWheel(False)
             self._colorbar.setVisible(True)
@@ -999,17 +1029,13 @@ class Inspector(QMainWindow):
         self.setCentralWidget(self._main_widget)
         self._data = None
         self._data_type = None # TODO is this needed?
-        self._prepareActions()  # Sets up actions/shortcuts
-
-        # Grab a convenience handle to the status bar
-        self._status_bar = self.statusBar()
-        # Ensure that the zoom widget is only added once (otherwise, would
-        # be added once for every newly opened image)
+        # Set up keyboard shortcuts/actions
+        self._prepareActions()
+        # Add a zoom widget (scale original, fit window, ...) to the status bar
         self._zoom_widget = ToolbarZoomWidget(self.centralWidget())
         self._zoom_widget.zoomBestFitRequest.connect(self.scaleImagesFit)
         self._zoom_widget.zoomOriginalSizeRequest.connect(self.scaleImagesOriginal)
-        self._status_bar.addPermanentWidget(self._zoom_widget)
-
+        self.statusBar().addPermanentWidget(self._zoom_widget)
         # Finally, show the given data
         self._inspectors = list()
         self.inspectData(data, data_type,
@@ -1036,7 +1062,7 @@ class Inspector(QMainWindow):
             for idx in range(num_inputs):
                 dt = data_type[idx] if isArrayLike(data_type) else data_type
                 insp = InspectionWidget(idx, data[idx], dt,
-                    display_settings=display_settings, show_toolbar=(idx == 0))
+                    display_settings=display_settings)
                 self._inspectors.append(insp)
                 layout.addWidget(insp, idx // max_num_widgets_per_row, idx % max_num_widgets_per_row)
                 if data[idx].shape[0] != data[0].shape[0]\
@@ -1047,31 +1073,37 @@ class Inspector(QMainWindow):
             if matching_input_shape:
                 for insp in self._inspectors:
                     insp.imgScaleChanged.connect(lambda _,s: self._zoom_widget.setScale(s))
+                    # Show initial scale value
+                    self._zoom_widget.setScale(insp.imageScale())
             #TODO should we add stretch or a spacer widget if more than 1 row and last row is not fully filled?
             # Link image viewers (FIXME) if images have the same resolution
                     insp.linkAxes(self._inspectors)
         else:
             # Single image to show, so we only need a single inspection widget
             insp = InspectionWidget(0, data, data_type,
-                display_settings=display_settings, show_toolbar=True)
+                display_settings=display_settings)
             self._inspectors = [insp]
             layout = QHBoxLayout()
             layout.addWidget(insp)
             self._zoom_widget.showScaleLabel(True)
             insp.imgScaleChanged.connect(lambda _,s: self._zoom_widget.setScale(s))
+            # Show initial scale value
+            self._zoom_widget.setScale(insp.imageScale())
         
         # Important to prevent ugly gaps between status bar and image canvas:
         margins = layout.contentsMargins()
         layout.setContentsMargins(margins.left(), margins.top(), margins.right(), 0)
         self._main_widget.setLayout(layout)
         
-        self.resize(self._initial_window_size) #TODO check if setimagescalefit works now...
-        # Scale all images to fit the current window (this
-        # may be overwritten by the following restoreDisplaySettings() call)
+        # self.resize(self._initial_window_size) #TODO check if setimagescalefit works now... NOPE
+        # # Scale all images to fit the current window (this
+        # # may be overwritten by the following restoreDisplaySettings() call)
         for insp in self._inspectors:
             # TODO scaling doesn't work yet - probably because upon initialization, the window ain't up
-            insp.setImageScaleFit()
+            # insp.setImageScaleFit()
             insp.showTooltipRequest.connect(self.showPixelValue)
+            insp.fileOpenRequest.connect(self._onOpen)
+            insp.fileSaveRequest.connect(self._onSave)
 
         # self._resetLayout()
         # Now we're ready to visualize the data
@@ -1126,11 +1158,11 @@ class Inspector(QMainWindow):
         # self._shortcuts = list()
         # Open file
         self._shortcut_open = QShortcut(QKeySequence('Ctrl+O'), self)
-        self._shortcut_open.activated.connect(self._onOpen)
+        self._shortcut_open.activated.connect(self._onOpenShortcut)
         # self._shortcuts.append(self._shortcut_open)
         # Save file
         self._shortcut_save = QShortcut(QKeySequence('Ctrl+S'), self)
-        self._shortcut_save.activated.connect(self._onSave)
+        self._shortcut_save.activated.connect(self._onSaveShortcut)
         # self._shortcuts.append(self._shortcut_save)
         # Close window
         self._shortcut_exit = QShortcut(QKeySequence('Ctrl+Q'), self)
@@ -1244,20 +1276,30 @@ class Inspector(QMainWindow):
         q = self._inspectors[inspector_id].getPixelValue(image_pos.x(), image_pos.y())
         if q is None:
             QToolTip.hideText()
-            self._status_bar.showMessage('')
+            self.statusBar().showMessage('')
             return
-        self._status_bar.showMessage(self._statusBarMessage(q))
+        self.statusBar().showMessage(self._statusBarMessage(q))
         QToolTip.showText(QCursor().pos(), self._tooltipMessage(q))
 
-    @pyqtSlot()
-    def _onOpen(self):
+    @pyqtSlot(int)
+    def _onOpen(self, inspector_id):
         self._open_file_dialog = OpenInspectionFileDialog(
             data_type=self._data_type, parent=self)
-        self._open_file_dialog.finished.connect(self._onOpenFinished)
+        self._open_file_dialog.finished.connect(
+            lambda: self._onOpenFinished(inspector_id))
         self._open_file_dialog.open()
 
     @pyqtSlot()
-    def _onOpenFinished(self):
+    def _onOpenShortcut(self):
+        #FIXME get currently active/closest inspector (compute distance to mouse, use underMouse() and fall back to #0)
+        raise NotImplementedError()
+        # self._open_file_dialog = OpenInspectionFileDialog(
+        #     data_type=self._data_type, parent=self)
+        # self._open_file_dialog.finished.connect(self._onOpenFinished)
+        # self._open_file_dialog.open()
+
+    @pyqtSlot(int)
+    def _onOpenFinished(self, inspector_id):
         res = self._open_file_dialog.getSelection()
         if res is None or any([r is None for r in res]):
             return
@@ -1279,8 +1321,9 @@ class Inspector(QMainWindow):
                 if data_type == DataType.BOOL:
                     data = data.astype(np.bool)
             self.setWindowTitle(Inspector.makeWindowTitle(self._window_title, data, data_type))
-            current_display = self.currentDisplaySettings()
-            self.inspectData(data, data_type, display_settings=current_display)
+            current_display = self.currentDisplaySettings() #FIXME use display settings of corresponding inspector
+            self._inspectors[inspector_id].inspectData(data, data_type, display_settings=current_display)
+            # self.inspectData(data, data_type, display_settings=current_display)
         except Exception as e:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
@@ -1291,16 +1334,28 @@ class Inspector(QMainWindow):
             msg.exec()
 
     @pyqtSlot()
-    def _onSave(self):
+    def _onSaveShortcut(self):
+        #FIXME implement (see onopenshortcut)
+        raise NotImplementedError()
+        # self._save_file_dialog = SaveInspectionFileDialog(self._data_type, parent=self)
+        # self._save_file_dialog.finished.connect(self._onSaveFinished)
+        # self._save_file_dialog.open()
+
+    @pyqtSlot(int)
+    def _onSave(self, inspector_id):
         self._save_file_dialog = SaveInspectionFileDialog(self._data_type, parent=self)
-        self._save_file_dialog.finished.connect(self._onSaveFinished)
+        self._save_file_dialog.finished.connect(
+            lambda: self._onSaveFinished(inspector_id))
         self._save_file_dialog.open()
 
-    @pyqtSlot()
-    def _onSaveFinished(self):
+    @pyqtSlot(int)
+    def _onSaveFinished(self, inspector_id):
         res = self._save_file_dialog.getSelection()
         if res is None or any([r is None for r in res]):
             return
+        #FIXME need to expose visualization, etc...
+        #FIXME move I/O logic to inspectionwidget directly!!
+        #FIXME need to rework the whole I/O logic
         filename, save_type = res
         if save_type == SaveInspectionFileDialog.SAVE_VISUALIZATION:
             filename = FilenameUtils.ensureImageExtension(filename)
