@@ -19,20 +19,9 @@ from vito import imutils
 from vito import flowutils
 
 if __name__ == "__main__":
-    # Visualize standard RGB image
-    lena = imutils.imread('lena.jpg')
-    inspect(lena, label='Demo RGB [{}]'.format(lena.dtype))
-
-    inspect([lena, lena])
-
-    #TODO remove/replace by actual hyperspectral data
-    test = np.dstack((lena, lena))
-    # inspect(test)
-    inspect((test, lena, lena), max_num_widgets_per_row=2)
-    raise RuntimeError('TODO')
-
-    lena = imutils.imread('lena-alpha.png')
-    inspect(lena, label='Demo RGBA [{}]'.format(lena.dtype))
+    # Inspect a boolean mask
+    mask = imutils.imread('space-invader.png', mode='L').astype(np.bool)
+    inspect(mask)
 
     # Exemplary weight matrix
     weights = imutils.imread('peaks.png', mode='L')
@@ -40,13 +29,12 @@ if __name__ == "__main__":
     weights_f32 = weights.astype(np.float32) / 255.0 - 0.5
     _, display_settings = inspect(weights_f32)
 
-    # Inspect a boolean mask (and restore the previous display settings)
-    mask = weights > 127
-    _, display_settings = inspect(mask, display_settings=display_settings)
-
-    # Inspect an image with 11 labels
+    # Inspect an image with 11 labels, restore the previous UI settings
     cats = (weights / 25).astype(np.int16) - 7
-    _, display_settings = inspect(cats, data_type=DataType.CATEGORICAL, display_settings=display_settings)
+    _, display_settings = inspect(
+        cats,
+        data_type=DataType.CATEGORICAL,
+        display_settings=display_settings)
 
     # Inspect a depth image
     depth = imutils.imread('depth.png')
@@ -56,6 +44,10 @@ if __name__ == "__main__":
     flow = flowutils.floread('color_wheel.flo')
     inspect(flow)
 
-    # Another boolean mask
-    mask = imutils.imread('space-invader.png', mode='L').astype(np.bool)
-    inspect(mask)
+    # Visualize standard RGB image
+    lena = imutils.imread('lena.jpg')
+    inspect(lena, label='Demo RGB [{}]'.format(lena.dtype))
+
+    # # Inspect RGBA image
+    # lena = imutils.imread('lena-alpha.png')
+    # inspect(lena, label='Demo RGBA [{}]'.format(lena.dtype))

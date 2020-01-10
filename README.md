@@ -32,6 +32,12 @@ inspect(np.random.rand(4096,4096) - 0.5)
 
 # Show as class labels:
 inspect((np.random.rand(16,16) * 1e2 % 5).astype(np.int16), data_type=DataType.CATEGORICAL)
+
+# Show two images next to each other, e.g. useful to analyse RGB and
+# corresponding depth, or RGB and corresponding optical flow:
+inspect((data_color, data_depth))
+# or specify the data types manually:
+inspect((x, y, data_type=(DataType.COLOR, DataType.DEPTH)))
 ```
 
 Example: visualizing categorical data (i.e. labels)<br/>
@@ -40,8 +46,8 @@ Example: visualizing categorical data (i.e. labels)<br/>
 Example: visualizing a mask image<br/>
 ![Screenshot binary data](https://github.com/snototter/iminspect/blob/master/screenshots/mask.jpg?raw=true "iminspect GUI")
 
-Example: visualizing optical flow<br/>
-![Screenshot optical flow](https://github.com/snototter/iminspect/blob/master/screenshots/flow-uv.jpg?raw=true "iminspect GUI")
+Example: visualizing RGB image and optical flow<br/>
+![Screenshot optical flow](https://github.com/snototter/iminspect/blob/master/screenshots/rgb-flow.jpg?raw=true "iminspect GUI")
 
 
 ## UI Documentation
@@ -65,8 +71,10 @@ Example: visualizing optical flow<br/>
 
 
 ## Changelog
-* Upcoming
+* `1.2.0`
   * Support multi-channel input data (with more than 4 channels).
+  * Support analysing multiple images at once, e.g. color images and corresponding optical flow.
+  * Major refactoring under the hood.
 * `1.1.0`
   * Support saving visualization and raw input data to disk.
   * Added shorthand wrapper to `inspect()` call.
@@ -94,15 +102,3 @@ Example: visualizing optical flow<br/>
   * Fixes:
     * Adjust scrollbars when zooming multiple linked ImageCanvas.
 * `0.1.0` - Initial public release.
-
-
-## Upcoming Changes/Nice-to-have
-* [ ] Usability: Incrementally in-/decreasing the zoom factor worked "good enough" so far, however, "fast zooming" seems a bit "too fast" sometimes.
-* [ ] Issue: Initial window resize won't scale to the exact specified size (additionally, QApplication...processEvents() won't finish resizing - image canvas widget will be resized "shortly" after a second time)
-* [ ] Feature: Implement a range slider to change visualization limits on-the-fly.
-* [ ] Feature: Extend flow visualization, i.e. if data is a rgb/flow tuple, show both next to each other.
-  * Zoom/scroll actions should be linked.
-  * Tool tips should show on both viewers.
-* [ ] Support hyperspectral data with more than 4 channels
-* [ ] Refactor inspector into inspection widget (move open/save to permanent status bar widget)
-* [ ] Support tuple input for data & type (show multiple inspection widgets with linked axes)

@@ -355,7 +355,7 @@ class SelectDirEntryWidget(InputWidget):
             if self._relative_base_path is not None:
                 selection = os.path.relpath(selection, self._relative_base_path)
             self._selection = selection
-            self._selection_label.setText(selection)  # TODO cut off string
+            self._selection_label.setText(selection)  # TODO cut off string if longer than X chars
         else:
             self._selection = None
             self._selection_label.setText(type(self).EMPTY_SELECTION)

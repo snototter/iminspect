@@ -1,221 +1,77 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Inspect matrix/image data"""
+# TODO Usability improvement:
+# Status bar for each InspectionWidget where the pixel value is shown (i.e.
+# you can inspect a pixel value for multiple images at once).
+# However, this is only useful if the displayed images have the same size and
+# are "linked".
+
+# TODO Usability improvement:
+# Let the user explicitly enable/disable linking of the viewers. Currently,
+# viewers will always be "linked" if all images have the same width/height.
+
+# TODO Usability improvement:
+# Implement a range slider widget which allows the user to adjust the
+# pseudocolor value limits on-the-fly.
+
+# TODO Usability improvement:
+# When showing multiple images, add an option to use the same visualization
+# data range across all images.
+
+# TODO Usability improvement:
+# Incrementally in-/decreasing the zoom factor worked "good enough" so far
+# however, "fast zooming" seems a bit "too fast" sometimes. Especially "fast
+# zooming" out is really fast (decreases by 50% with each wheel tick).
+
+# TODO GUI issue:
+# Initial window resize won't scale to the exact specified size.
+# QApplication().instance().processEvents() doesn't help either. The widgets
+# (e.g. image canvas) will be resized "shortly" after initializing the QMainWindow
+# for a second time. Needs thorough investigation.
+
+# * Potential (usability) issue:
+# Consider this scenario: Initially, the user may have shown two same-sized
+# images (viewer axes have been linked). Now, a differently sized image has
+# been opened. Thus, the viewers will still/again be linked which may lead
+# to minor zooming/scrolling issues.
+# Currently, I prefer not to deal with such unexpected user behavior, as
+# this increases the code complexity unnecessarily.
 
 import numpy as np
-import os
 from enum import Enum
-import qimage2ndarray
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
-    QHBoxLayout, QVBoxLayout, QGridLayout, QPushButton, QLabel, QFrame, QToolTip, \
-    QShortcut, QDialog, QMessageBox, QToolButton, QScrollArea
-from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QPainter, QCursor, QFont, QBrush, QColor, \
-    QKeySequence, QPixmap, QIcon
+    QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QFrame, QToolTip, \
+    QShortcut, QMessageBox, QScrollArea
+from PyQt5.QtCore import Qt, QSize, QPoint, pyqtSignal, pyqtSlot
+from PyQt5.QtGui import QCursor, QFont, QKeySequence, QResizeEvent
 
 from vito import imutils
 from vito import colormaps
 from vito import imvis
 from vito import flowutils
 
-from . import imgview as imgview
-from . import inputs as inputs
-
-
-# Utils to format a data point (depending on the range)
-def fmtf(v):
-    return '{:f}'.format(v)
-
-
-def fmt4f(v):
-    return '{:.4f}'.format(v)
-
-
-def fmt3f(v):
-    return '{:.3f}'.format(v)
-
-
-def fmt2f(v):
-    return '{:.2f}'.format(v)
-
-
-def fmt1f(v):
-    return '{:.1f}'.format(v)
-
-
-def fmti(v):
-    return '{:d}'.format(int(v))
-
-
-def fmtb(v):
-    return 'True' if v else 'False'
-
-
-def best_format_fx(limits):
-    # Check range of data to select proper label formating
-    span = limits[1] - limits[0]
-    if span <= 0.5:
-        return fmtf
-    elif span <= 1.0:
-        return fmt4f
-    elif span <= 2.0:
-        return fmt3f
-    elif span < 10.0:
-        return fmt2f
-    elif span < 100.0:
-        return fmt1f
-    else:
-        return fmti
-
-
-class ColorBar(QWidget):
-    """Draws a vertical color bar."""
-    def __init__(self):
-        super(ColorBar, self).__init__()
-        self._bar_width = 30
-        self._bar_padding = 5
-        self._min_height = 80
-        self._font_size = 10
-        self._num_labels = 10
-
-        self.setMinimumHeight(self._min_height)
-        self.setMinimumWidth(100)
-        self._colormap = None
-        self._limits = None
-        self._show_flow_wheel = False
-        self._is_boolean = False
-        self._categories = None
-
-    def setBoolean(self, b):
-        # If the visualized data is boolean, set this to True!
-        self._is_boolean = b
-
-    def setCategories(self, c):
-        # If the visualized data is categorical (i.e. a label image), set the unique categories!
-        self._categories = c
-
-    def setLimits(self, limits):
-        self._limits = limits
-
-    def setColormap(self, colormap):
-        self._colormap = colormap
-
-    def setFlowWheel(self, show_wheel):
-        self._show_flow_wheel = show_wheel
-
-    def paintEvent(self, event):
-        if not self._show_flow_wheel and (self._colormap is None
-                or (not self._is_boolean and self._categories is None and self._limits is None)):
-            return
-        size = self.size()
-        qp = QPainter()
-        qp.begin(self)
-        qp.setFont(QFont('sans-serif', self._font_size))
-
-        if self._is_boolean:
-            # For binary/boolean data, we only need to show the two visualized colors.
-            rgb = self._colormap[-1]
-            brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
-            qp.fillRect(self._bar_padding, 0, self._bar_width, np.ceil(size.height()/2), brush)
-            rgb = self._colormap[0]
-            brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
-            qp.fillRect(self._bar_padding, np.floor(size.height()/2),
-                        self._bar_width, np.ceil(size.height()/2), brush)
-            # Draw labels
-            qp.drawText(QPoint(2*self._bar_padding + self._bar_width, int(size.height()*0.25)),
-                        'True')
-            qp.drawText(QPoint(2*self._bar_padding + self._bar_width, int(size.height()*0.75)),
-                        'False')
-        elif self._categories is not None:
-            # For label images, we don't need the full colormap gradient, but only
-            # one block for each class/label/category.
-
-            # Compute height of each colored block.
-            num_categories = len(self._categories)
-            step_height = size.height() / float(num_categories)
-            cm_indices = np.linspace(0, 255, num_categories).astype(np.uint8)
-            # Draw the category colors from top to bottom (largest ID/category/label first).
-            top = 0.0
-            label_pos = list()
-            for i in range(num_categories):
-                rgb = self._colormap[cm_indices[num_categories-1-i]]
-                brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
-                qp.fillRect(self._bar_padding, np.floor(top), self._bar_width, np.ceil(step_height), brush)
-                # Compute label position (vertically centered, adjust if outside of canvas)
-                ly = max(self._font_size, min(np.floor(top + step_height/2 + self._font_size/2), size.height()))
-                label_pos.append(QPoint(2*self._bar_padding + self._bar_width, ly))
-                # Move to next category.
-                top += step_height
-            # Now the label positions are computed from largest to smallest, but
-            # categories are listed from smallest to largest, so:
-            label_pos.reverse()
-            # Draw labels (vertically centered on corresponding filled rects)
-            # Check, if all labels fit (font size vs widget height).
-            height_per_label = max(size.height() / num_categories, 2*self._font_size)
-            num_labels = min(num_categories, int(size.height() / height_per_label))
-            # If there's too little space, select a subset of labels (and their
-            # corresponding text positions).
-            selected_idx = np.linspace(0, num_categories-1, num_labels)
-            labels = [self._categories[int(i)] for i in selected_idx]
-            lpos = [label_pos[int(i)] for i in selected_idx]
-            for i in range(num_labels):
-                qp.drawText(lpos[i], fmti(labels[i]))
-        elif self._show_flow_wheel:
-            # Draw the flow color wheel, centered on the widget
-            center = QPointF(size.width() / 2, size.height() / 2)
-            diameter = int(min(size.width(), size.height()) - 2 * self._bar_padding)
-            radius = diameter / 2
-            # Create optical flow that will be visualized as color wheel
-            coords = np.linspace(-1, 1, diameter)
-            xv, yv = np.meshgrid(coords, coords)
-            flow = np.dstack((xv, yv))
-            colorized = flowutils.colorize_flow(flow)
-            # Create an alpha mask to draw a circle
-            alpha_mask = np.zeros((diameter, diameter), dtype=np.uint8)
-            where = np.sqrt(np.square(xv) + np.square(yv)) <= 1.0
-            alpha_mask[where] = 255
-            colorized = np.dstack((colorized, alpha_mask))
-            # Draw the color wheel
-            qimage = qimage2ndarray.array2qimage(colorized)
-            qpixmap = QPixmap.fromImage(qimage)
-            qp.drawPixmap(center.x() - radius, center.y() - radius, qpixmap)
-            # Label it
-            txt_height = int((size.height() - 2*self._bar_padding - diameter - 5) / 2)
-            if txt_height > 15:
-                qp.drawText(QRect(center.x() - radius, self._bar_padding, diameter, txt_height),
-                    Qt.AlignHCenter | Qt.AlignBottom, 'Flow\nColor Wheel')
-        else:
-            # Draw color gradients
-            num_gradient_steps = min(size.height(), 256)
-            step_height = size.height() / float(num_gradient_steps)
-            cm_indices = np.linspace(0, 255, num_gradient_steps).astype(np.uint8)
-            top = 0.0
-            for i in range(num_gradient_steps):
-                rgb = self._colormap[cm_indices[num_gradient_steps-1-i]]
-                brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
-                qp.fillRect(self._bar_padding, np.floor(top),
-                            self._bar_width, np.ceil(step_height), brush)
-                top += step_height
-            # Draw labels
-            fmt = best_format_fx(self._limits)
-            height_per_label = max(size.height() / self._num_labels, 2*self._font_size)
-            num_labels = min(self._num_labels, int(size.height() / height_per_label))
-            labels = np.linspace(self._limits[0], self._limits[1], num_labels)
-            for i in range(num_labels):
-                pos = QPoint(2*self._bar_padding + self._bar_width,
-                             int(size.height() - i * (size.height()-self._font_size)/(num_labels-1)))
-                qp.drawText(pos, fmt(labels[i]))
-        # We're done painting
-        qp.end()
+from . import imgview
+from . import inputs
+from . import inspection_widgets
+from . import inspection_utils
 
 
 class DataType(Enum):
+    # Standard 3- or 4-channel input
     COLOR = 0
+    # Single-channel data, arbitrary type
     MONOCHROME = 1
+    # Single-channel data, either bool or should be considered as/cast to bool
     BOOL = 2
+    # To interpret data as having a finite number of labels/categories
     CATEGORICAL = 3
+    # Two-channel optical flow data
     FLOW = 4
+    # Interpret data as depth, usually uint16 or int32 (since depth cameras
+    # return measurements in millimeters).
     DEPTH = 5
+    # To support analysing data with more than 4 (RGBA) channels:
     MULTICHANNEL = 6
 
     @staticmethod
@@ -236,11 +92,12 @@ class DataType(Enum):
         elif dt == DataType.MULTICHANNEL:
             return 'multi-channel'
         else:
-            raise ValueError('Invalid DataType')
+            raise NotImplementedError('DataType "%d" is not yet supported!' % dt)
 
     @staticmethod
     def fromData(npdata):
-        """Make a best guess on the proper data type given the numpy ndarray
+        """
+        Make a best guess on the proper data type given the numpy ndarray
         input npdata. In particular, we consider npdata.ndim and dtype:
         * HxW or HxWx1
             * data.dtype is bool: DataType.BOOL
@@ -266,316 +123,41 @@ class DataType(Enum):
             elif npdata.shape[2] == 3 or npdata.shape[2] == 4:
                 return DataType.COLOR
             else:
-                # raise ValueError('Input data with %d channels is not supported' % npdata.shape[2])
                 return DataType.MULTICHANNEL
         else:
             raise ValueError('Input data with ndim > 3 (i.e. %d) is not supported!' % npdata.ndim)
 
-
-class OpenInspectionFileDialog(QDialog):
-    def __init__(self, data_type=None, parent=None):
-        super(OpenInspectionFileDialog, self).__init__(parent)
-        self._filename = None
-        self._data_type = None
-        self._confirmed = False
-        self._prepareLayout(data_type)
-
-    def _prepareLayout(self, current_data_type):
-        self.setWindowTitle('Open File')
-        layout = QVBoxLayout()
-        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;NumPy Arrays (*.npy);;All Files (*.*)'
-        if current_data_type is None:
-            initial_filter = ''
-        elif current_data_type == DataType.FLOW:
-            initial_filter = 'Optical Flow (*.flo)'
-        elif current_data_type == DataType.MULTICHANNEL:
-            initial_filter = 'NumPy Arrays (*.npy)'
-        else:
-            initial_filter = ''
-        self._file_widget = inputs.SelectDirEntryWidget('File:',
-            inputs.SelectDirEntryType.FILENAME_OPEN, parent=self,
-            filters=file_filters,
-            initial_filter=initial_filter,
-            min_label_width=None, relative_base_path=None)
-        self._file_widget.value_changed.connect(self._fileSelected)
-        layout.addWidget(self._file_widget)
-
-        self._type_widget = inputs.DropDownSelectionWidget('Type:',
-            [(DataType.COLOR, 'Color'),
-            (DataType.MONOCHROME, 'Monochrome'),
-            (DataType.BOOL, 'Boolean Mask'),
-            (DataType.CATEGORICAL, 'Categories / Labels'),
-            (DataType.DEPTH, 'Depth'),
-            (DataType.FLOW, 'Optical Flow'),
-            (DataType.MULTICHANNEL, 'Multi-channel')])
-        if current_data_type is not None:
-            self._type_widget.set_value(current_data_type)
-        layout.addWidget(self._type_widget)
-
-        btn_layout = QHBoxLayout()
-        btn_cancel = QPushButton('Cancel')
-        btn_cancel.clicked.connect(self._onCancel)
-        btn_layout.addWidget(btn_cancel)
-
-        self._btn_confirm = QPushButton('Open')
-        self._btn_confirm.clicked.connect(self._onConfirm)
-        self._btn_confirm.setEnabled(False)
-        btn_layout.addWidget(self._btn_confirm)
-
-        layout.addLayout(btn_layout)
-        self.setLayout(layout)
-
-    def open(self):
-        super(OpenInspectionFileDialog, self).open()
-        self._file_widget.open_dialog()
-
-    @pyqtSlot(object)
-    def _fileSelected(self, filename):
-        self._filename = filename
-        if self._filename is not None and self._filename.lower().endswith('.flo'):
-            self._type_widget.set_value(DataType.FLOW)
-            self._type_widget.setEnabled(False)
-        elif self._filename is not None and self._filename.lower().endswith('.npy'):
-            self._type_widget.set_value(DataType.MULTICHANNEL)
-            self._type_widget.setEnabled(False)
-        else:
-            # Change to an image type if flow is currently selected
-            if self._type_widget.get_input()[0] == DataType.FLOW:
-                self._type_widget.set_value(DataType.COLOR)
-            self._type_widget.setEnabled(True)
-        self._btn_confirm.setEnabled(self._filename is not None)
-        if self._filename is None:
-            self._onCancel()
-
-    @pyqtSlot()
-    def _onCancel(self):
-        self.reject()
-
-    @pyqtSlot()
-    def _onConfirm(self):
-        type_tuple = self._type_widget.get_input()
-        if type_tuple is None:
-            self._data_type = None
-        else:
-            self._data_type = type_tuple[0]
-        self._confirmed = True
-        self.accept()
-
-    def getSelection(self):
-        if self._confirmed:
-            return (self._filename, self._data_type)
-        return None
-
-
-class FilenameUtils(object):
     @staticmethod
-    def ensureFileExtension(filename, extensions):
-        """Ensures that the given filename has one of the given extensions.
-        Otherwise, the first element of extensions will be appended.
-        :param filename: string
-        :param extensions: list of strings
+    def pilModeFor(data_type, data=None):
         """
-        if filename is None:
-            return None
-        if len(filename) == 0:
-            raise ValueError('Filename cannot be empty')
-        if len(extensions) == 0:
-            raise ValueError('List of extensions to test agains cannot be empty')
-        _, ext = os.path.splitext(filename.lower())
-        for e in extensions:
-            # Ensure that the extension to test agains starts with '.'
-            if e.startswith('.'):
-                test_ext = e
+        Returns PIL's conversion mode for the corresponding data_type.
+        Returns None for data which cannot be handled by PIL, i.e.: optical
+        flow and multi-channel data.
+        If available, provide the data too - so we can tell RGB from RGBA if
+        data_type indicates a COLOR image.
+
+        See also PIL modes:
+        https://pillow.readthedocs.io/en/3.1.x/handbook/concepts.html#concept-modes
+        """
+        if data_type == DataType.COLOR:
+            # Data may be single-channel, but the user requested us to treat
+            # it like a RGB image.
+            if data is None or len(data.shape) < 3 or data.shape[2] < 4:
+                return 'RGB'
             else:
-                test_ext = '.' + e
-            if test_ext.lower() == ext:
-                return filename
-        # No extension matched, thus append the first one
-        if extensions[0].startswith('.'):
-            return filename + extensions[0]
+                return 'RGBA'
+        elif data_type == DataType.MONOCHROME:
+            return 'L'
+        elif data_type == DataType.CATEGORICAL:
+            return 'I'
+        elif data_type == DataType.BOOL:
+            return '1'
+        elif data_type == DataType.DEPTH:
+            return 'I'
+        elif data_type in [DataType.FLOW, DataType.MULTICHANNEL]:
+            return None
         else:
-            return filename + '.' + extensions[0]
-
-    @staticmethod
-    def ensureImageExtension(filename):
-        """Ensures that the given filename has an image type extension.
-        Otherwise, appends PNG extension.
-        """
-        return FilenameUtils.ensureFileExtension(
-            filename, ['.png', '.jpg', '.jpeg', '.ppm', '.bmp'])
-
-    @staticmethod
-    def ensureFlowExtension(filename):
-        """Ensures that the given filename has the .flo extension."""
-        return FilenameUtils.ensureFileExtension(
-            filename, ['.flo'])
-
-    @staticmethod
-    def ensureNumpyExtension(filename):
-        """Ensures that the given filename has the .npy extension."""
-        return FilenameUtils.ensureFileExtension(
-            filename, ['.npy'])
-
-
-class SaveInspectionFileDialog(QDialog):
-    SAVE_VISUALIZATION = 0
-    SAVE_RAW = 1
-
-    def __init__(self, data_type, parent=None):
-        super(SaveInspectionFileDialog, self).__init__(parent)
-        self._filename = None
-        self._save_as = None
-        self._confirmed = False
-        self._prepareLayout(data_type)
-
-    def _prepareLayout(self, data_type):
-        self.setWindowTitle('Save File')
-        layout = QVBoxLayout()
-        file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;NumPy Arrays (*.npy);;All Files (*.*)'
-        if data_type == DataType.FLOW:
-            initial_filter = 'Optical Flow (*.flo)'
-        elif data_type == DataType.MULTICHANNEL:
-            initial_filter = 'NumPy Arrays (*.npy)'
-        else:
-            initial_filter = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm)'
-        self._file_widget = inputs.SelectDirEntryWidget('File:',
-            inputs.SelectDirEntryType.FILENAME_SAVE, parent=self,
-            filters=file_filters,
-            initial_filter=initial_filter,
-            min_label_width=None, relative_base_path=None)
-        self._file_widget.value_changed.connect(self._fileSelected)
-        layout.addWidget(self._file_widget)
-
-        self._save_as_widget = inputs.DropDownSelectionWidget('What to save:',
-            [(SaveInspectionFileDialog.SAVE_VISUALIZATION, 'Current visualization'),
-            (SaveInspectionFileDialog.SAVE_RAW, 'Input data')])
-        layout.addWidget(self._save_as_widget)
-
-        btn_layout = QHBoxLayout()
-        btn_cancel = QPushButton('Cancel')
-        btn_cancel.clicked.connect(self._onCancel)
-        btn_layout.addWidget(btn_cancel)
-
-        self._btn_confirm = QPushButton('Save')
-        self._btn_confirm.clicked.connect(self._onConfirm)
-        self._btn_confirm.setEnabled(False)
-        btn_layout.addWidget(self._btn_confirm)
-
-        layout.addLayout(btn_layout)
-        self.setLayout(layout)
-
-    def open(self):
-        super(SaveInspectionFileDialog, self).open()
-        self._file_widget.open_dialog()
-
-    @pyqtSlot(object)
-    def _fileSelected(self, filename):
-        self._filename = filename
-        self._btn_confirm.setEnabled(self._filename is not None)
-        if self._filename is None:
-            self._onCancel()
-
-    @pyqtSlot()
-    def _onCancel(self):
-        self.reject()
-
-    @pyqtSlot()
-    def _onConfirm(self):
-        tpl = self._save_as_widget.get_input()
-        if tpl is None:
-            self._save_as = None
-        else:
-            self._save_as = tpl[0]
-        self._confirmed = True
-        self.accept()
-
-    def getSelection(self):
-        if self._confirmed:
-            return (self._filename, self._save_as)
-        return None
-
-
-class ToolbarFileIOWidget(QWidget):
-    """
-    Provides buttons to issue open/save file requests.
-    """
-    openFileRequest = pyqtSignal()
-    saveFileRequest = pyqtSignal()
-    
-    def __init__(self, vertical=False, icon_size=QSize(20, 20), parent=None):
-        # TODO doc: icon size 20x20 for status bar, 24x24 for inspectionwidget
-        # Theme icons, see
-        # https://specifications.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
-        super(ToolbarFileIOWidget, self).__init__(parent)
-        if vertical:
-            layout = QVBoxLayout()
-        else:
-            layout = QHBoxLayout()
-        btn = QToolButton()
-        btn.setIcon(QIcon.fromTheme('document-open'))
-        btn.setIconSize(icon_size)
-        btn.setToolTip('Open file (Ctrl+O)')
-        btn.clicked.connect(self.openFileRequest)
-        layout.addWidget(btn)
-
-        btn = QToolButton()
-        btn.setIcon(QIcon.fromTheme('document-save-as'))
-        btn.setIconSize(icon_size)
-        btn.setToolTip('Save as... (Ctrl+S)')
-        btn.clicked.connect(self.saveFileRequest)
-        layout.addWidget(btn)
-        # Important: remove margins!
-        layout.setContentsMargins(0, 0, 0, 0)
-        if vertical:
-            layout.setAlignment(Qt.AlignTop)
-        else:
-            layout.setAlignment(Qt.AlignRight)
-        self.setLayout(layout)
-
-
-class ToolbarZoomWidget(QWidget):
-    """Provides two clickable icons allowing the user to request the standard
-    scalings "zoom-best-fit" and "zoom-original"."""
-    # Signal if zoom-best-fit is clicked
-    zoomBestFitRequest = pyqtSignal()
-    # Signal if zoom-original is clicked
-    zoomOriginalSizeRequest = pyqtSignal()
-
-    def __init__(self, central_widget, parent=None):
-        super(ToolbarZoomWidget, self).__init__(parent)
-        self._show_label = True
-        layout = QHBoxLayout()
-        self._scale_label = QLabel('Scale:')
-        layout.addWidget(self._scale_label)
-        btn_fit = QToolButton(central_widget)
-        btn_fit.setIcon(QIcon.fromTheme('zoom-fit-best'))
-        btn_fit.setIconSize(QSize(20, 20))
-        btn_fit.setToolTip('Zoom to fit visible area (Ctrl+F)')
-        btn_fit.clicked.connect(self.zoomBestFitRequest)
-        layout.addWidget(btn_fit)
-
-        btn_original = QToolButton(central_widget)
-        btn_original.setIcon(QIcon.fromTheme('zoom-original'))
-        btn_original.setIconSize(QSize(20, 20))
-        btn_original.setToolTip('Zoom to original size (Ctrl+1)')
-        btn_original.clicked.connect(self.zoomOriginalSizeRequest)
-        layout.addWidget(btn_original)
-        # Important: remove margins!
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(layout)
-
-    @pyqtSlot(float)
-    def setScale(self, scale):
-        if not self._show_label:
-            return
-        if scale < 0.01:
-            self._scale_label.setText('Scale < 1 %')
-        else:
-            self._scale_label.setText('Scale {:d} %'.format(int(scale*100)))
-   
-    def showScaleLabel(self, visible):
-        self._show_label = visible
-        self._scale_label.setVisible(visible)
+            raise NotImplementedError('PIL mode for DataType "%s" is not yet configured' % DataType.toStr(data_type))
 
 
 class InspectionWidget(QWidget):
@@ -586,19 +168,13 @@ class InspectionWidget(QWidget):
     # Ensure that grayscale is the second option
     VIS_COLORMAPS = ['Grayscale'] + [cmn for cmn in colormaps.colormap_names if cmn.lower() != 'grayscale']
 
-    #TODO link InspectionWidget
-    #TODO doc that datatype depth == monochrome
-    #TODO doc that signals yield the inspector id
-
-    # If widget was created with show_toolbars, this signal will
-    # be emitted once the user clicks the 'open' button
-    fileOpenRequest = pyqtSignal(int)
-
-    # Similar to fileOpenRequest, but for the 'save' button
-    fileSaveRequest = pyqtSignal(int)
-
-    # Emitted whenever the user changes the image scale
+    # Emitted whenever the user changes the image scale (float).
+    # The integer parameter will hold the "inspector_id" as set
+    # upon __init__().
     imgScaleChanged = pyqtSignal(int, float)
+
+    # Notify observers that a new image has been loaded
+    fileOpened = pyqtSignal(int)
 
     # Emitted whenever the user moves the mouse across the image
     # Yields the "inspector_id" and corresponding (image) pixel position
@@ -607,7 +183,6 @@ class InspectionWidget(QWidget):
     # the visualization mode (e.g. switching from grayscale to raw data)
     # and thus, the currently displayed tooltip (if any) must be updated.
     showTooltipRequest = pyqtSignal(int, object)
-    #TODO upon save: get thumbnail for each inspector
 
     def __init__(
             self,
@@ -630,8 +205,17 @@ class InspectionWidget(QWidget):
         self._reset_viewer = True
         # Function handle to format data values
         self.__fmt_fx = None
+        # Handles to file I/O dialogs
+        self._save_file_dialog = None
+        self._open_file_dialog = None
         # Now, show the given data:
         self.inspectData(data, data_type, display_settings)
+
+    def getData(self):
+        return self._data
+
+    def getDataType(self):
+        return self._data_type
 
     def inspectData(self, data, data_type=None, display_settings=None):
         """
@@ -651,13 +235,12 @@ class InspectionWidget(QWidget):
         self._visualized_data = None
         self._visualized_pseudocolor = None
         self._reset_viewer = True
-
         # Set up GUI
-        self._resetLayout()
+        self.__resetLayout()
         # Analyze the given data (range, data type, channels, etc.)
-        self._prepareDataStatistics()
+        self.__prepareDataStatistics()
         # Now we're ready to visualize the data ...
-        self._updateDisplay()
+        self.__updateDisplay()
         # ... and potentially restore display settings
         self.restoreDisplaySettings(display_settings)
 
@@ -665,47 +248,38 @@ class InspectionWidget(QWidget):
         """Adjust the image scale (float)."""
         self._img_viewer.setScale(scale)
         self.update()
-        #FIXME imgviewer.imgScaleChanged.connect(self.imgScaleChanged)
 
     def setImageScaleFit(self):
         self._img_viewer.scaleToFitWindow()
         self.update()
-        #FIXME emit signal (or done in imgview?)
-    
+
     def imageScale(self):
         return self._img_viewer.scale()
 
     def currentDisplaySettings(self):
-        # settings = {
-        #     'wsize': self.size(),
-        #     # 'screenpos': self.mapToGlobal(QPoint(0, 0)), #TODO move to qmainwindow
-        #     'dd:vis': self._visualization_dropdown.get_input()[0],
-        #     'data_type': self._data_type
-        # }
-        # if not self._is_single_channel:
-        #     settings['dd:layer'] = self._layer_dropdown.get_input()[0]
-        #     settings['cb:globlim'] = self._checkbox_global_limits.get_input()
-        # settings.update(self._img_viewer.currentDisplaySettings())
-        # return settings
-        return None #TODO
+        settings = {
+            'dd-visualization': self._visualization_dropdown.get_input()[0],
+            'data-type': self._data_type
+        }
+        if not self._is_single_channel:
+            settings['dd-selected-layer'] = self._layer_dropdown.get_input()[0]
+            settings['cb-same-limits'] = self._checkbox_global_limits.get_input()
+        # Extend dictionary by the image viewer's settings
+        settings.update(self._img_viewer.currentDisplaySettings())
+        return settings
 
     def restoreDisplaySettings(self, settings):
         if settings is None:
             return
-        # # Restore customized UI settings (only if data type didn't change)
-        # if self._data_type == settings['data_type']:
-        #     self._visualization_dropdown.set_value(settings['dd:vis'])
-        #     if not self._is_single_channel:
-        #         self._layer_dropdown.set_value(settings['dd:layer'])
-        #         self._checkbox_global_limits.set_value(settings['cb:globlim'])
-        # # Restore window position/dimension
-        #     # self.resize(settings['wsize']) #TODO move to mainwindow
-        # # Note that restoring the position doesn't always work (issues with
-        # # windows that are placed partially outside the screen)
-        #     # self.move(settings['screenpos']) #TODO move to mainwindow!
-        # # Restore zoom/translation settings
-        # self._img_viewer.restoreDisplaySettings(settings)
-        # self._updateDisplay() #TODO
+        # Restore customized UI settings only if data type didn't change.
+        if self._data_type == settings['data-type']:
+            self._visualization_dropdown.set_value(settings['dd-visualization'])
+            if not self._is_single_channel:
+                self._layer_dropdown.set_value(settings['dd-selected-layer'])
+                self._checkbox_global_limits.set_value(settings['cb-same-limits'])
+        # Restore zoom/translation settings
+        self._img_viewer.restoreDisplaySettings(settings)
+        self.__updateDisplay()
 
     def pixelFromGlobal(self, global_pos):
         """
@@ -739,6 +313,8 @@ class InspectionWidget(QWidget):
                     if self._visualized_data.shape[2] != 1:
                         raise RuntimeError('Invalid number of channels')
                     query['currlayer'] = self.__fmt_fx(self._visualized_data[y, x, 0])
+        query['dtypestr'] = 'Category' if self._data_type == DataType.CATEGORICAL \
+            else ('Flow' if self._data_type == DataType.FLOW else 'Raw data')
 
         if self._visualized_pseudocolor is None:
             query['pseudocol'] = None
@@ -747,12 +323,15 @@ class InspectionWidget(QWidget):
                 ['{:d}'.format(self._visualized_pseudocolor[y, x, c])
                     for c in range(self._visualized_pseudocolor.shape[2])]) \
                     + ']'
-        
+
         query['scale'] = self.imageScale()
         return query
 
     def linkAxes(self, other_inspection_widgets):
         self._img_viewer.linkViewers([oiw._img_viewer for oiw in other_inspection_widgets])
+
+    def clearLinkedAxes(self):
+        self._img_viewer.clearLinkedViewers()
 
     def zoomImage(self, delta):
         self._img_viewer.zoom(delta)
@@ -760,7 +339,111 @@ class InspectionWidget(QWidget):
     def scrollImage(self, delta, orientation):
         self._img_viewer.scroll(delta, orientation)
 
-    def _prepareDataStatistics(self):
+    @pyqtSlot()
+    def showFileSaveDialog(self):
+        thumbnails = {
+            inspection_widgets.SaveInspectionFileDialog.SAVE_VISUALIZATION: self._img_viewer.imagePixmap(),
+            inspection_widgets.SaveInspectionFileDialog.SAVE_RAW: inspection_utils.pixmapFromNumPy(self._data)
+        }
+        self._save_file_dialog = inspection_widgets.SaveInspectionFileDialog(
+            self._data_type, thumbnails=thumbnails, parent=self)
+        self._save_file_dialog.finished.connect(self.__onSaveFinished)
+        self._save_file_dialog.open()
+
+    @pyqtSlot()
+    def showFileOpenDialog(self):
+        # self._open_file_dialog = OpenInspectionFileDialog(self._data_type, parent=self)
+        self._open_file_dialog = inspection_widgets.OpenInspectionFileDialog(
+            data_type=self._data_type,
+            thumbnail=self._img_viewer.imagePixmap(),
+            parent=self)
+        self._open_file_dialog.finished.connect(self.__onOpenFinished)
+        self._open_file_dialog.open()
+
+    @pyqtSlot()
+    def __onSaveFinished(self):
+        res = self._save_file_dialog.getSelection()
+        if res is None or any([r is None for r in res]):
+            return
+        filename, save_type = res
+        if save_type == inspection_widgets.SaveInspectionFileDialog.SAVE_VISUALIZATION:
+            filename = inspection_utils.FilenameUtils.ensureImageExtension(filename)
+            pc = self._visualized_pseudocolor
+            save_data = self._visualized_data if pc is None else pc
+            save_fx = imutils.imsave
+        elif save_type == inspection_widgets.SaveInspectionFileDialog.SAVE_RAW:
+            if self._data_type == DataType.FLOW:
+                filename = inspection_utils.FilenameUtils.ensureFlowExtension(filename)
+                save_fx = flowutils.flosave
+            elif self._data_type == DataType.MULTICHANNEL:
+                filename = inspection_utils.FilenameUtils.ensureNumpyExtension(filename)
+                save_fx = np.save
+            else:
+                filename = inspection_utils.FilenameUtils.ensureImageExtension(filename)
+                save_fx = imutils.imsave
+            save_data = self._data
+        else:
+            raise NotImplementedError('Save as %d type is not yet supported' % save_type)
+
+        try:
+            # Successfully (manually) tested:
+            # * Save raw input:
+            #   o Save RGB (png, jpg)
+            #     + Load RGB as RGB, save RGB
+            #     + Load mono as RGB, save RGB
+            #   o Save mono (png, jpg)
+            #     + Load mono as mono, save mono
+            #     + Load RGB as mono, save mono
+            #   o Save depth (16bit png)
+            #     + Load depth as depth, save depth
+            #     + Load mono as depth, save depth
+            #     + Load RGB as depth, save depth
+            #   o Save boolean mask (1bit png)
+            # * Save visualization ==> RGB png/jpg
+            # * Save optical flow (raw & visualization)
+            #
+            # Nice-to-have: automated tests (see tests of vito package on how
+            # to check file metadata)
+            save_fx(filename, save_data)
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText('Error saving {:s}'.format(
+                'current visualization' if save_type == inspection_widgets.SaveInspectionFileDialog.SAVE_VISUALIZATION
+                else 'raw input data'))
+            msg.setInformativeText('Logged exception:\n{:s}'.format(str(e)))
+            msg.setWindowTitle('Error')
+            msg.exec()
+
+    @pyqtSlot()
+    def __onOpenFinished(self):
+        res = self._open_file_dialog.getSelection()
+        if res is None or any([r is None for r in res]):
+            return
+        try:
+            filename, data_type = res
+            if data_type == DataType.FLOW:
+                data = flowutils.floread(filename)
+            elif data_type == DataType.MULTICHANNEL:
+                data = np.load(filename)
+            else:
+                data = imutils.imread(filename, mode=DataType.pilModeFor(data_type, data=None))
+                if data_type == DataType.BOOL:
+                    data = data.astype(np.bool)
+            current_display = self.currentDisplaySettings()
+            self.inspectData(data, data_type, display_settings=current_display)
+            # Notify observers of loaded data
+            self.fileOpened.emit(self._inspector_id)
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText('Error loading file as type "{:s}"'.format(
+                DataType.toStr(data_type)))
+            msg.setInformativeText('Logged exception:\n{:s}'.format(str(e)))
+            msg.setWindowTitle('Error')
+            msg.exec()
+
+    def __prepareDataStatistics(self):
         """
         Analyzes the internal _data field (range, data type, channels,
         etc.) and sets member variables accordingly.
@@ -776,22 +459,22 @@ class InspectionWidget(QWidget):
             self._data.dtype, DataType.toStr(self._data_type)))
         stdout_str.append('Shape:     {}\n'.format(self._data.shape))
 
-        lbl_txt = '<table cellpadding="5"><tr><th colspan="2">Information</th></tr>'
+        lbl_txt = '<table cellpadding="5">'
         lbl_txt += '<tr><td><b>Type:</b> {} ({})</td><td><b>Shape:</b> {}</td></tr>'.format(
             self._data.dtype, DataType.toStr(self._data_type), self._data.shape)
 
         # Select format function to display data in status bar/tooltip
         if self._data_type == DataType.BOOL:
             self._data_limits = [float(v) for v in self._data_limits]
-            self.__fmt_fx = fmtb
+            self.__fmt_fx = inspection_utils.fmtb
             self._colorbar.setBoolean(True)
         elif self._data_type == DataType.CATEGORICAL:
-            self.__fmt_fx = fmti
+            self.__fmt_fx = inspection_utils.fmti
             self._data_categories, ic = np.unique(self._data, return_inverse=True)
             self._data_inverse_categories = ic.reshape(self._data.shape)
             self._colorbar.setCategories(self._data_categories)
         else:
-            self.__fmt_fx = best_format_fx(self._data_limits)
+            self.__fmt_fx = inspection_utils.bestFormatFx(self._data_limits)
 
         # Prepare QLabel and stdout message:
         if self._data_type == DataType.BOOL:
@@ -826,29 +509,22 @@ class InspectionWidget(QWidget):
                     #
                     lbl_txt += '<tr><td>Channel {} range: [{}, {}]</td><td>Mean: {} &#177; {}</td></tr>'.format(
                         c, self.__fmt_fx(cmin), self.__fmt_fx(cmax), self.__fmt_fx(cmean), self.__fmt_fx(cstd))
-
         # Print to stdout
         for s in stdout_str:
             print(s)
         # Show on label
         lbl_txt += '</table>'
         self._data_label.setText(lbl_txt)
-        # self._data_label.repaint()
-        # FIXME Now replace the label
-        self._data_label_scroll_area.setWidget(self._data_label)
-        # self._data_label_scroll_area.setWidgetResizable(False)
+        self._data_label.update()
 
-
-    def _resetLayout(self):
+    def __resetLayout(self):
         # Add a file I/O widget to open/save an image from this
         # inspection widget:
-        file_io_widget = ToolbarFileIOWidget(
+        file_io_widget = inspection_widgets.ToolbarFileIOWidget(
             vertical=True, icon_size=QSize(24, 24))
-        file_io_widget.saveFileRequest.connect(
-            lambda: self.fileSaveRequest.emit(self._inspector_id))
-        file_io_widget.openFileRequest.connect(
-            lambda: self.fileOpenRequest.emit(self._inspector_id))
-        
+        file_io_widget.fileSaveRequest.connect(self.showFileSaveDialog)
+        file_io_widget.fileOpenRequest.connect(self.showFileOpenDialog)
+
         input_layout = QVBoxLayout()
         # Let user select a single channel if multi-channel input is provided
         if not self._is_single_channel:
@@ -857,7 +533,7 @@ class InspectionWidget(QWidget):
             else:
                 dd_options = [(-1, 'All')] + [(c, 'Layer {:d}'.format(c)) for c in range(self._data.shape[2])]
             self._layer_dropdown = inputs.DropDownSelectionWidget('Select layer:', dd_options)
-            self._layer_dropdown.value_changed.connect(self._updateDisplay)
+            self._layer_dropdown.value_changed.connect(self.__updateDisplay)
             self._layer_dropdown.value_changed.connect(lambda: self.showTooltipRequest.emit(self._inspector_id, None))
             self._layer_dropdown.setToolTip('Select which layer to visualize')
             input_layout.addWidget(self._layer_dropdown)
@@ -868,7 +544,7 @@ class InspectionWidget(QWidget):
             self._checkbox_global_limits = inputs.CheckBoxWidget(
                 'Same limits for all channels:',
                 checkbox_left=False, is_checked=True)
-            self._checkbox_global_limits.value_changed.connect(self._updateDisplay)
+            self._checkbox_global_limits.value_changed.connect(self.__updateDisplay)
             self._checkbox_global_limits.value_changed.connect(lambda: self.showTooltipRequest.emit(self._inspector_id, None))
             self._checkbox_global_limits.setToolTip(
                 'If checked, visualization uses min/max from data[:] instead of data[:, :, channel]')
@@ -884,7 +560,7 @@ class InspectionWidget(QWidget):
         self._visualization_dropdown = inputs.DropDownSelectionWidget('Visualization:', vis_options,
             initial_selected_index=len(InspectionWidget.VIS_COLORMAPS) if self._is_single_channel
                 else (len(InspectionWidget.VIS_COLORMAPS)-1 if self._data_type == DataType.FLOW else 0))
-        self._visualization_dropdown.value_changed.connect(self._updateDisplay)
+        self._visualization_dropdown.value_changed.connect(self.__updateDisplay)
         self._visualization_dropdown.value_changed.connect(lambda: self.showTooltipRequest.emit(self._inspector_id, None))
         self._visualization_dropdown.setToolTip('Select raw vs. colorized')
         input_layout.addWidget(self._visualization_dropdown)
@@ -897,39 +573,56 @@ class InspectionWidget(QWidget):
         self._img_viewer.imgScaleChanged.connect(lambda s: self.imgScaleChanged.emit(self._inspector_id, s))
         img_layout.addWidget(self._img_viewer)
 
-        self._colorbar = ColorBar()
+        self._colorbar = inspection_widgets.ColorBar()
         self._colorbar.setToolTip('Color bar')
         img_layout.addWidget(self._colorbar)
 
-        # Set font of tool tips
-        QToolTip.setFont(QFont('SansSerif', 10))
-
         # Label to show important image statistics/information
-        self._data_label_scroll_area = QScrollArea()
-        self._data_label_scroll_area.setWidget(QLabel()) #FIXME add dummy label - doesn't work either; check how to deal with the scrollarea issue properly!
         # self._data_label_scroll_area.setWidgetResizable(True)
         self._data_label = QLabel()
         self._data_label.setFrameShape(QFrame.Panel)
         self._data_label.setFrameShadow(QFrame.Sunken)
         self._data_label.setToolTip('Data properties')
+        # The info label will be placed in a scroll area, in case it is too large
+        self._data_label_scroll_area = QScrollArea()
+        self._data_label_scroll_area.setWidget(self._data_label)
+        self._data_label_scroll_area.setWidgetResizable(True)
 
         # The "menu"/"control bar" inputs/controls looks like:
         #   File I/O  |  Visualization  | Image Information.
         top_row_layout = QHBoxLayout()
         top_row_layout.addWidget(file_io_widget)
         top_row_layout.addWidget(inputs.VLine())
+        # Make a dummy widget holding all user input controls, so we can force
+        # a maximum size.
         input_layout.setAlignment(Qt.AlignTop)
-        top_row_layout.addLayout(input_layout)
+        # top_row_layout.addLayout(input_layout)
+        self._input_widget = QWidget()
+        self._input_widget.setLayout(input_layout)
+        top_row_layout.addWidget(self._input_widget)
         top_row_layout.addWidget(self._data_label_scroll_area)
-
         # Set the main widget's layout
         main_layout = QVBoxLayout()
         main_layout.addLayout(top_row_layout)
         main_layout.addLayout(img_layout)
+        # Set font of tool tips
+        QToolTip.setFont(QFont('SansSerif', 10))
+        # Reparent layout to temporary object (so we can replace it)
+        if self.layout() is not None:
+            QWidget().setLayout(self.layout())
         self.setLayout(main_layout)
 
+    def resizeEvent(self, event):
+        # Upon initialization, we didn't know the dimension of the input
+        # widgets. Now, we can set a size constraint for inputs and the
+        # data information label.
+        min_input_height = self._input_widget.layout().minimumSize().height()
+        self._data_label_scroll_area.setMaximumHeight(min_input_height)
+        self._input_widget.setMaximumHeight(min_input_height)
+        return super(InspectionWidget, self).resizeEvent(event)
+
     @pyqtSlot()
-    def _updateDisplay(self):
+    def __updateDisplay(self):
         # Select which layer to show:
         if self._is_single_channel:
             self._visualized_data = self._data
@@ -987,22 +680,6 @@ class InspectionWidget(QWidget):
         self._reset_viewer = False
 
 
-
-
-
-
-
-
-
-
-
-
-
-def isArrayLike(v):
-    """Checks if v is a tuple or list."""
-    return isinstance(v, tuple) or isinstance(v, list)
-
-
 class Inspector(QMainWindow):
     """Main window to inspect the given data"""
 
@@ -1012,7 +689,7 @@ class Inspector(QMainWindow):
         if label is not None:
             return label
         # If we show multiple images, show [multi]:
-        if isArrayLike(data):
+        if inspection_utils.isArrayLike(data):
             return 'iminspect [multi]'
         # Otherwise, use the given data_type (or compute it from data if None)
         if data_type is None:
@@ -1021,25 +698,24 @@ class Inspector(QMainWindow):
 
     def __init__(
             self, data, data_type, display_settings=None,
-            max_num_widgets_per_row=3, #TODO update doc!
+            max_num_widgets_per_row=3,
             initial_window_size=QSize(1280, 720),
             window_title=None,
             force_linked_viewers=False):
         super(Inspector, self).__init__()
         self._initial_window_size = initial_window_size
-        self._window_title = window_title
-        # self._shortcuts = list()
+        self._user_defined_window_title = window_title
+        self._should_link_viewers = False
         self._open_file_dialog = None
         self._save_file_dialog = None
+        # Create the central widget (layout will be adjusted withi
+        # inspectData()
         self._main_widget = QWidget()
-        # self._main_widget.setLayout(main_layout)
         self.setCentralWidget(self._main_widget)
-        self._data = None
-        self._data_type = None # TODO is this needed?
-        # Set up keyboard shortcuts/actions
-        self._prepareActions()
+        # Set up keyboard shortcuts
+        self.__addShortcuts()
         # Add a zoom widget (scale original, fit window, ...) to the status bar
-        self._zoom_widget = ToolbarZoomWidget(self.centralWidget())
+        self._zoom_widget = inspection_widgets.ToolbarZoomWidget(self.centralWidget())
         self._zoom_widget.zoomBestFitRequest.connect(self.scaleImagesFit)
         self._zoom_widget.zoomOriginalSizeRequest.connect(self.scaleImagesOriginal)
         self.statusBar().addPermanentWidget(self._zoom_widget)
@@ -1055,219 +731,217 @@ class Inspector(QMainWindow):
             max_num_widgets_per_row=3, display_settings=None,
             force_linked_viewers=False):
         """
-        data: np.ndarray or tuple/list of np.ndarray
-              if list/tuple, multiple inspection widgets will be shown in a grid layout, with maximum num, max_num_widgets_per_row per row)
+        Loads the given data and resets the widget's layout.
+        See inspector.inspect() for documentation of the parameters.
         """
         if data is None:
             raise ValueError('Input data cannot be None')
-        self._data = data
-        self._data_type = data_type
-        
-        if isArrayLike(data):
-            matching_input_shape = True  # Check if all input images have the same shape
+
+        if inspection_utils.isArrayLike(data):
+            # Check if all images have the same width/height.
+            matching_input_shape = True
+            # Place inspection widgets in a grid layout.
             layout = QGridLayout()
+            # Create inspection widgets:
             num_inputs = len(data)
             self._inspectors = list()
             for idx in range(num_inputs):
-                dt = data_type[idx] if isArrayLike(data_type) else data_type
+                dt = data_type[idx] if inspection_utils.isArrayLike(data_type) else data_type
                 insp = InspectionWidget(idx, data[idx], dt,
-                    display_settings=display_settings)
+                    display_settings=None
+                        if display_settings is None or display_settings['num-inspectors'] != num_inputs
+                        else display_settings['inspection-widgets'][idx])
                 self._inspectors.append(insp)
-                layout.addWidget(insp, idx // max_num_widgets_per_row, idx % max_num_widgets_per_row)
-                if data[idx].shape[0] != data[0].shape[0]\
+                layout.addWidget(insp,
+                    idx // max_num_widgets_per_row, idx % max_num_widgets_per_row)
+                if data[idx].shape[0] != data[0].shape[0] \
                         or data[idx].shape[1] != data[0].shape[1]:
                     matching_input_shape = False
             # Turn off scale display if images have different resolution
             self._zoom_widget.showScaleLabel(matching_input_shape)
             # Link image viewers if images have the same resolution
             if matching_input_shape or force_linked_viewers:
-                for insp in self._inspectors:
-                    insp.linkAxes(self._inspectors)
+                self._should_link_viewers = True
+                self.__linkInspectors()
         else:
             # Single image to show, so we only need a single inspection widget
             insp = InspectionWidget(0, data, data_type,
-                display_settings=display_settings)
+                display_settings=None
+                    if display_settings is None or display_settings['num-inspectors'] != 1
+                    else display_settings['inspection-widgets'][0])
             self._inspectors = [insp]
             layout = QHBoxLayout()
             layout.addWidget(insp)
             self._zoom_widget.showScaleLabel(True)
-            # insp.imgScaleChanged.connect(lambda _,s: self._zoom_widget.setScale(s))
-            # # Show initial scale value
-            # self._zoom_widget.setScale(insp.imageScale())
-        
+            self._should_link_viewers = False
+
         # Important to prevent ugly gaps between status bar and image canvas:
         margins = layout.contentsMargins()
         layout.setContentsMargins(margins.left(), margins.top(), margins.right(), 0)
         self._main_widget.setLayout(layout)
-        
-        # self.resize(self._initial_window_size) #TODO check if setimagescalefit works now... NOPE
-        # # Scale all images to fit the current window (this
-        # # may be overwritten by the following restoreDisplaySettings() call)
+
         for insp in self._inspectors:
-            # TODO scaling doesn't work yet - probably because upon initialization, the window ain't up
-            # insp.setImageScaleFit()
+            insp.fileOpened.connect(self.__fileHasBeenOpened)
             insp.showTooltipRequest.connect(self.showPixelValue)
-            insp.fileOpenRequest.connect(self._onOpen)
-            insp.fileSaveRequest.connect(self._onSave)
             # Note that the scale label of the zoom widget has already been
             # disabled/hidden (if there are multiple inputs and sizes differ).
             # Thus, we can connect the imgScaleChanged widget here anyways:
-            insp.imgScaleChanged.connect(lambda _,s: self._zoom_widget.setScale(s))
+            insp.imgScaleChanged.connect(lambda _, s: self._zoom_widget.setScale(s))
             # We also need to display the initial scale value:
             self._zoom_widget.setScale(insp.imageScale())
 
-        # self._resetLayout()
-        # Now we're ready to visualize the data
-        # TODO rm self._updateDisplay()
         # Restore display settings
         self.restoreDisplaySettings(display_settings)
 
     def currentDisplaySettings(self):
-        #TODO iterate inspectors
-        # settings = {
-        #     'wsize': self.size(),
-        #     'screenpos': self.mapToGlobal(QPoint(0, 0)),
-        #     'dd:vis': self._visualization_dropdown.get_input()[0],
-        #     'data_type': self._data_type
-        # }
-        # if not self._is_single_channel:
-        #     settings['dd:layer'] = self._layer_dropdown.get_input()[0]
-        #     settings['cb:globlim'] = self._checkbox_global_limits.get_input()
-        # settings.update(self._img_viewer.currentDisplaySettings())
-        # return settings
-        print('TODO')
-        return None
+        """
+        Returns a dictionary of currently applied UI settings/attributes.
+        This can be used to restore these settings after opening/displaying
+        subsequent data via restoreDisplaySettings().
+        """
+        settings = {
+            'win-size': self.size(),
+            'win-pos': self.mapToGlobal(QPoint(0, 0)),
+            'num-inspectors': len(self._inspectors)
+        }
+        inspection_widgets_settings = [insp.currentDisplaySettings() for insp in self._inspectors]
+        settings['inspection-widgets'] = inspection_widgets_settings
+        return settings
 
     def restoreDisplaySettings(self, settings):
+        """
+        Re-applies the display settings previously obtained via
+        currentDisplaySettings() where applicable. This means that if the
+        data type changed in between, type-specific UI settings/attributes
+        will not be restored.
+        """
         if settings is None:
             return
-        # # Restore customized UI settings (only if data type didn't change)
-        # if self._data_type == settings['data_type']:
-        #     self._visualization_dropdown.set_value(settings['dd:vis'])
-        #     if not self._is_single_channel:
-        #         self._layer_dropdown.set_value(settings['dd:layer'])
-        #         self._checkbox_global_limits.set_value(settings['cb:globlim'])
-        # # Restore window position/dimension
-        # self.resize(settings['wsize'])
-        # # Note that restoring the position doesn't always work (issues with
-        # # windows that are placed partially outside the screen)
-        # self.move(settings['screenpos'])
-        # # Restore zoom/translation settings
-        # self._img_viewer.restoreDisplaySettings(settings)
-        # self._updateDisplay()
-        print('TODO')
+        self.resize(settings['win-size'])
+        # Note that restoring the position doesn't always work (issues with
+        # windows that are placed partially outside the screen)
+        self.move(settings['win-pos'])
+        # Restore each viewer-specific display only if the number of viewers
+        # stayed the same:
+        num_inspectors = len(self._inspectors)
+        if num_inspectors == settings['num-inspectors']:
+            for idx in range(num_inspectors):
+                self._inspectors[idx].restoreDisplaySettings(settings['inspection-widgets'][idx])
+        self.update()
 
-    def _prepareActions(self):
-        # Disable and delete previously registered shortcuts (otherwise, they
-        # would be silently ignored once you replace the central widget - which
-        # happens as soon as you display another image with the same Inspector
-        # instance).
-        #TODO no longer needed?
-        # for sc in self._shortcuts:
-        #     sc.setEnabled(False)
-        #     sc.deleteLater()
-        # self._shortcuts = list()
+    def __linkInspectors(self):
+        """Link zoom/scroll behavior of multiple inspection widgets, if possible/requested."""
+        for insp in self._inspectors:
+            insp.clearLinkedAxes()
+            if self._should_link_viewers:
+                insp.linkAxes(self._inspectors)
+
+    def __addShortcuts(self):
         # Open file
         self._shortcut_open = QShortcut(QKeySequence('Ctrl+O'), self)
-        self._shortcut_open.activated.connect(self._onOpenShortcut)
-        # self._shortcuts.append(self._shortcut_open)
+        self._shortcut_open.activated.connect(self.__onOpenShortcut)
         # Save file
         self._shortcut_save = QShortcut(QKeySequence('Ctrl+S'), self)
-        self._shortcut_save.activated.connect(self._onSaveShortcut)
-        # self._shortcuts.append(self._shortcut_save)
+        self._shortcut_save.activated.connect(self.__onSaveShortcut)
         # Close window
         self._shortcut_exit = QShortcut(QKeySequence('Ctrl+Q'), self)
         self._shortcut_exit.activated.connect(QApplication.instance().quit)
-        # self._shortcuts.append(self._shortcut_exit)
         # Zooming
         self._shortcut_zoom_in = QShortcut(QKeySequence('Ctrl++'), self)
         self._shortcut_zoom_in.activated.connect(lambda: self.zoomImages(120))
-        # self._shortcuts.append(self._shortcut_zoom_in)
         self._shortcut_zoom_in_fast = QShortcut(QKeySequence('Ctrl+Shift++'), self)
         self._shortcut_zoom_in_fast.activated.connect(lambda: self.zoomImages(1200))
-        # self._shortcuts.append(self._shortcut_zoom_in_fast)
         self._shortcut_zoom_out = QShortcut(QKeySequence('Ctrl+-'), self)
         self._shortcut_zoom_out.activated.connect(lambda: self.zoomImages(-120))
-        # self._shortcuts.append(self._shortcut_zoom_out)
         self._shortcut_zoom_out_fast = QShortcut(QKeySequence('Ctrl+Shift+-'), self)
         self._shortcut_zoom_out_fast.activated.connect(lambda: self.zoomImages(-1200))
-        # self._shortcuts.append(self._shortcut_zoom_out_fast)
         # Scrolling
         self._shortcut_scroll_up = QShortcut(QKeySequence('Ctrl+Up'), self)
         self._shortcut_scroll_up.activated.connect(lambda: self.scrollImages(120, Qt.Vertical))
-        # self._shortcuts.append(self._shortcut_scroll_up)
         self._shortcut_scroll_up_fast = QShortcut(QKeySequence('Ctrl+Shift+Up'), self)
         self._shortcut_scroll_up_fast.activated.connect(lambda: self.scrollImages(1200, Qt.Vertical))
-        # self._shortcuts.append(self._shortcut_scroll_up_fast)
         self._shortcut_scroll_down = QShortcut(QKeySequence('Ctrl+Down'), self)
         self._shortcut_scroll_down.activated.connect(lambda: self.scrollImages(-120, Qt.Vertical))
-        # self._shortcuts.append(self._shortcut_scroll_down)
         self._shortcut_scroll_down_fast = QShortcut(QKeySequence('Ctrl+Shift+Down'), self)
         self._shortcut_scroll_down_fast.activated.connect(lambda: self.scrollImages(-1200, Qt.Vertical))
-        # self._shortcuts.append(self._shortcut_scroll_down_fast)
         self._shortcut_scroll_left = QShortcut(QKeySequence('Ctrl+Left'), self)
         self._shortcut_scroll_left.activated.connect(lambda: self.scrollImages(120, Qt.Horizontal))
-        # self._shortcuts.append(self._shortcut_scroll_left)
         self._shortcut_scroll_left_fast = QShortcut(QKeySequence('Ctrl+Shift+Left'), self)
         self._shortcut_scroll_left_fast.activated.connect(lambda: self.scrollImages(1200, Qt.Horizontal))
-        # self._shortcuts.append(self._shortcut_scroll_left_fast)
         self._shortcut_scroll_right = QShortcut(QKeySequence('Ctrl+Right'), self)
         self._shortcut_scroll_right.activated.connect(lambda: self.scrollImages(-120, Qt.Horizontal))
-        # self._shortcuts.append(self._shortcut_scroll_right)
         self._shortcut_scroll_right_fast = QShortcut(QKeySequence('Ctrl+Shift+Right'), self)
         self._shortcut_scroll_right_fast.activated.connect(lambda: self.scrollImages(-1200, Qt.Horizontal))
-        # self._shortcuts.append(self._shortcut_scroll_right_fast)
         # Scale to fit window
         self._shortcut_scale_fit = QShortcut(QKeySequence('Ctrl+F'), self)
         self._shortcut_scale_fit.activated.connect(self.scaleImagesFit)
-        # self._shortcuts.append(self._shortcut_scale_fit)
+        # Scale to original size
         self._shortcut_scale_original = QShortcut(QKeySequence('Ctrl+1'), self)
         self._shortcut_scale_original.activated.connect(self.scaleImagesOriginal)
-        # self._shortcuts.append(self._shortcut_scale_original)
-    
+
     @pyqtSlot(int)
     def scrollImages(self, delta, orientation):
         for insp in self._inspectors:
-            insp.scrollImage(delta, orientation) #FIXME impl
-    
+            insp.scrollImage(delta, orientation)
+
     @pyqtSlot(int)
     def zoomImages(self, delta):
         for insp in self._inspectors:
-            insp.zoomImage(delta) #FIXME impl
+            insp.zoomImage(delta)
 
     @pyqtSlot()
     def scaleImagesOriginal(self):
         for insp in self._inspectors:
             insp.setImageScaleAbsolute(1.0)
-    
+
     @pyqtSlot()
     def scaleImagesFit(self):
         for insp in self._inspectors:
             insp.setImageScaleFit()
 
-    def _statusBarMessage(self, query):
-        """Returns a message to be displayed upon the status bar showing
+    @pyqtSlot(int)
+    def __fileHasBeenOpened(self, inspector_id):
+        self.__updateWindowTitle()
+        # Update handles for linked inspectors (since image viewers may have
+        # been replaced by new objects)
+        self.__linkInspectors()
+        # Send a dummy resize event to ensure that the "image information label"
+        # and input widgets of each InspectionWidget are properly resized.
+        for insp in self._inspectors:
+            insp.resizeEvent(QResizeEvent(insp.size(), QSize()))
+
+    def __updateWindowTitle(self):
+        if len(self._inspectors) < 2:
+            data = self._inspectors[0].getData()
+            data_type = self._inspectors[0].getDataType()
+        else:
+            data = [insp.getData() for insp in self._inspectors]
+            data_type = [insp.getDataType() for insp in self._inspectors]
+        self.setWindowTitle(
+            Inspector.makeWindowTitle(
+                self._user_defined_window_title, data, data_type))
+
+    def __statusBarMessage(self, query):
+        """
+        Returns a message to be displayed upon the status bar showing
         the data point at the cursor position. Requires result of _queryDataLocation
         as input.
         """
-        s = query['pos'] + ', ' + ('Category' if self._data_type == DataType.CATEGORICAL
-            else ('Flow' if self._data_type == DataType.FLOW else 'Raw data'))\
-            + ': ' + query['rawstr']
+        s = query['pos'] + ', ' + query['dtypestr'] + ': ' + query['rawstr']
         if query['currlayer'] is not None:
             s += ', Current layer: ' + query['currlayer']
         if query['pseudocol'] is not None:
             s += ', Pseudocolor: ' + query['pseudocol']
         return s
 
-    def _tooltipMessage(self, query):
-        """Returns a HTML formatted tooltip message showing the
+    def __tooltipMessage(self, query):
+        """
+        Returns a HTML formatted tooltip message showing the
         data point at the cursor position. Requires result of _queryDataLocation
         as input.
         """
         s = '<table><tr><td>Position:</td><td>' + query['pos'] + '</td></tr>'
-        s += '<tr><td>' + ('Category' if self._data_type == DataType.CATEGORICAL
-            else ('Flow' if self._data_type == DataType.FLOW else 'Raw data')) \
-            + ':</td><td>' + query['rawstr'] + '</td></tr>'
+        s += '<tr><td>' + query['dtypestr'] + ':</td><td>' + query['rawstr'] + '</td></tr>'
         if query['currlayer'] is not None:
             s += '<tr><td>Layer:</td><td>' + query['currlayer'] + '</td></tr>'
         if query['pseudocol'] is not None:
@@ -1277,7 +951,7 @@ class Inspector(QMainWindow):
                 sc = '< 1'
             else:
                 sc = '{:d}'.format(int(query['scale']*100))
-            s += '<tr><td>Scale:</td><td> ' + sc + ' %</td></tr>'
+            s += '<tr><td>Scale:</td><td> ' + sc + '%</td></tr>'
         s += '</table>'
         return s
 
@@ -1295,133 +969,31 @@ class Inspector(QMainWindow):
             QToolTip.hideText()
             self.statusBar().showMessage('')
             return
-        self.statusBar().showMessage(self._statusBarMessage(q))
-        QToolTip.showText(QCursor().pos(), self._tooltipMessage(q))
+        self.statusBar().showMessage(self.__statusBarMessage(q))
+        QToolTip.showText(QCursor().pos(), self.__tooltipMessage(q))
 
-    @pyqtSlot(int)
-    def _onOpen(self, inspector_id):
-        self._open_file_dialog = OpenInspectionFileDialog(
-            data_type=self._data_type, parent=self)
-        self._open_file_dialog.finished.connect(
-            lambda: self._onOpenFinished(inspector_id))
-        self._open_file_dialog.open()
-
-    @pyqtSlot()
-    def _onOpenShortcut(self):
-        #FIXME get currently active/closest inspector (compute distance to mouse, use underMouse() and fall back to #0)
-        raise NotImplementedError()
-        # self._open_file_dialog = OpenInspectionFileDialog(
-        #     data_type=self._data_type, parent=self)
-        # self._open_file_dialog.finished.connect(self._onOpenFinished)
-        # self._open_file_dialog.open()
-
-    @pyqtSlot(int)
-    def _onOpenFinished(self, inspector_id):
-        res = self._open_file_dialog.getSelection()
-        if res is None or any([r is None for r in res]):
-            return
-        try:
-            filename, data_type = res
-            if data_type == DataType.FLOW:
-                data = flowutils.floread(filename)
-            elif data_type == DataType.MULTICHANNEL:
-                data = np.load(filename)
-            else:
-                im_mode = {
-                    DataType.COLOR: 'RGB',
-                    DataType.MONOCHROME: 'L',
-                    DataType.CATEGORICAL: 'I',
-                    DataType.BOOL: 'L',
-                    DataType.DEPTH: 'I'
-                }
-                data = imutils.imread(filename, mode=im_mode[data_type])
-                if data_type == DataType.BOOL:
-                    data = data.astype(np.bool)
-            self.setWindowTitle(Inspector.makeWindowTitle(self._window_title, data, data_type))
-            current_display = self.currentDisplaySettings() #FIXME use display settings of corresponding inspector
-            self._inspectors[inspector_id].inspectData(data, data_type, display_settings=current_display)
-            # self.inspectData(data, data_type, display_settings=current_display)
-        except Exception as e:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setText('Error loading file as type "{:s}"'.format(
-                DataType.toStr(data_type)))
-            msg.setInformativeText('Logged exception:\n{:s}'.format(str(e)))
-            msg.setWindowTitle('Error')
-            msg.exec()
+    def __getActiveInspector(self):
+        """
+        Returns the index of the currently "active" inspection widget. If
+        there are multiple inspection widgets, the one currently under the
+        mouse is considered active.
+        If no widget is under the mouse, this falls back to the first
+        inspection widget.
+        """
+        for inspector_id in range(len(self._inspectors)):
+            if self._inspectors[inspector_id].underMouse():
+                return inspector_id
+        return 0
 
     @pyqtSlot()
-    def _onSaveShortcut(self):
-        #FIXME implement (see onopenshortcut)
-        raise NotImplementedError()
-        # self._save_file_dialog = SaveInspectionFileDialog(self._data_type, parent=self)
-        # self._save_file_dialog.finished.connect(self._onSaveFinished)
-        # self._save_file_dialog.open()
+    def __onOpenShortcut(self):
+        inspector_id = self.__getActiveInspector()
+        self._inspectors[inspector_id].showFileOpenDialog()
 
-    @pyqtSlot(int)
-    def _onSave(self, inspector_id):
-        self._save_file_dialog = SaveInspectionFileDialog(self._data_type, parent=self)
-        self._save_file_dialog.finished.connect(
-            lambda: self._onSaveFinished(inspector_id))
-        self._save_file_dialog.open()
-
-    @pyqtSlot(int)
-    def _onSaveFinished(self, inspector_id):
-        res = self._save_file_dialog.getSelection()
-        if res is None or any([r is None for r in res]):
-            return
-        #FIXME need to expose visualization, etc...
-        #FIXME move I/O logic to inspectionwidget directly!!
-        #FIXME need to rework the whole I/O logic
-        filename, save_type = res
-        if save_type == SaveInspectionFileDialog.SAVE_VISUALIZATION:
-            filename = FilenameUtils.ensureImageExtension(filename)
-            pc = self._visualized_pseudocolor
-            save_data = self._visualized_data if pc is None else pc
-            save_fx = imutils.imsave
-        elif save_type == SaveInspectionFileDialog.SAVE_RAW:
-            if self._data_type == DataType.FLOW:
-                filename = FilenameUtils.ensureFlowExtension(filename)
-                save_fx = flowutils.flosave
-            elif self._data_type == DataType.MULTICHANNEL:
-                filename = FilenameUtils.ensureNumpyExtension(filename)
-                save_fx = np.save
-            else:
-                filename = FilenameUtils.ensureImageExtension(filename)
-                save_fx = imutils.imsave
-            save_data = self._data
-        else:
-            raise NotImplementedError('Save as %d type is not yet supported' % save_type)
-
-        try:
-            # Successfully (manually) tested:
-            # * Save raw input:
-            #   o Save RGB (png, jpg)
-            #     + Load RGB as RGB, save RGB
-            #     + Load mono as RGB, save RGB
-            #   o Save mono (png, jpg)
-            #     + Load mono as mono, save mono
-            #     + Load RGB as mono, save mono
-            #   o Save depth (16bit png)
-            #     + Load depth as depth, save depth
-            #     + Load mono as depth, save depth
-            #     + Load RGB as depth, save depth
-            #   o Save boolean mask (1bit png)
-            # * Save visualization ==> RGB png/jpg
-            # * Save optical flow (raw & visualization)
-            #
-            # Nice-to-have: automated tests (see tests of vito package on how
-            # to check file metadata)
-            save_fx(filename, save_data)
-        except Exception as e:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setText('Error saving {:s}'.format(
-                'current visualization' if save_type == SaveInspectionFileDialog.SAVE_VISUALIZATION
-                else 'raw input data'))
-            msg.setInformativeText('Logged exception:\n{:s}'.format(str(e)))
-            msg.setWindowTitle('Error')
-            msg.exec()
+    @pyqtSlot()
+    def __onSaveShortcut(self):
+        inspector_id = self.__getActiveInspector()
+        self._inspectors[inspector_id].showFileSaveDialog()
 
 
 def inspect(

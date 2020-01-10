@@ -8,13 +8,44 @@ from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QScrollArea,\
     QHBoxLayout, QVBoxLayout, QDialog
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QSize, QPointF, QPoint, QRect
-from PyQt5.QtGui import QPainter, QPixmap, QCursor, QBrush, QColor, QPen, QPalette, \
-    QImage, QFont
-import qimage2ndarray
+from PyQt5.QtGui import QPainter, QPixmap, QCursor, QBrush, QColor, QPen, QPalette
+
+from . import inspection_utils
+
+
+class ImageLabel(QWidget):
+    """Widget to display an image, always resized to the widgets dimensions."""
+    def __init__(self, pixmap=None, parent=None):
+        super(ImageLabel, self).__init__(parent)
+        self._pixmap = pixmap
+
+    def pixmap(self):
+        return self._pixmap
+
+    def setPixmap(self, pixmap):
+        self._pixmap = pixmap
+        self.update()
+
+    def paintEvent(self, event):
+        super(ImageLabel, self).paintEvent(event)
+        if self._pixmap is None:
+            return
+        painter = QPainter(self)
+        pm_size = self._pixmap.size()
+        pm_size.scale(event.rect().size(), Qt.KeepAspectRatio)
+        # Draw resized pixmap using nearest neighbor interpolation instead
+        # of bilinear/smooth interpolation (omit the Qt.SmoothTransformation
+        # parameter).
+        scaled = self._pixmap.scaled(
+                pm_size, Qt.KeepAspectRatio)
+        pos = QPoint(
+            (event.rect().width() - scaled.width()) // 2,
+            (event.rect().height() - scaled.height()) // 2)
+        painter.drawPixmap(pos, scaled)
 
 
 class ImageCanvas(QWidget):
-    """Widget to display an image."""
+    """Widget to display a zoomable/scrollable image."""
     # User wants to zoom in/out by amount (mouse wheel delta)
     zoomRequest = pyqtSignal(int)
     # User wants to scroll (Qt.Horizontal or Qt.Vertical, mouse wheel delta)
@@ -216,6 +247,8 @@ class ImageViewerType(Enum):
 
 
 class ImageViewer(QScrollArea):
+    """A widget to view image data (given as numpy ndarray)."""
+
     # Mouse moved to this pixel position
     mouseMoved = pyqtSignal(QPointF)
     # User selected a rectangle (ImageCanvas must be created with rect_selectable=True)
@@ -230,9 +263,18 @@ class ImageViewer(QScrollArea):
         self._img_np = None
         self._img_scale = 1.0
         self._min_img_scale = None
+        self._canvas = None
         self._linked_viewers = list()
         self._viewer_type = viewer_type
         self._prepareLayout(**kwargs)
+
+    def imageNumPy(self):
+        """Returns the shown image as numpy ndarray."""
+        return self._img_np()
+
+    def imagePixmap(self):
+        """Returns the shown image as QPixmap."""
+        return self._canvas.pixmap()
 
     def pixelFromGlobal(self, global_pos):
         """Map a global position, e.g. QCursor.pos(), to the corresponding
@@ -254,11 +296,11 @@ class ImageViewer(QScrollArea):
         else:
             raise RuntimeError('Unsupported ImageViewerType')
         self._canvas.rectSelected.connect(self._emitRectSelected)
-
         self._canvas.zoomRequest.connect(self.zoom)
         self._canvas.scrollRequest.connect(self.scrollRelative)
         self._canvas.mouseMoved.connect(self.mouseMoved)
         self._canvas.imgScaleChanged.connect(self.imgScaleChanged)
+        self._canvas.imgScaleChanged.connect(lambda _: self.viewChanged.emit())
 
         self.setWidget(self._canvas)
         self.setWidgetResizable(True)
@@ -309,10 +351,17 @@ class ImageViewer(QScrollArea):
         """'link_axes'-like behavior: link this ImageViewer to each
         ImageViewer in the given list such that they all zoom/scroll
         the same.
+        Note that previously linked viewers will still be notified
+        of UI changes. Use clearLinkedViewers() if you want to remove
+        previously registered viewers.
         """
         others = [v for v in viewers if v is not self]
         if others:
             self._linked_viewers.extend(others)
+
+    def clearLinkedViewers(self):
+        """Clears the list of linked viewers."""
+        self._linked_viewers = list()
 
     @pyqtSlot(int)
     def zoom(self, delta, notify_linked=True):
@@ -327,16 +376,21 @@ class ImageViewer(QScrollArea):
         px_pos_prev = self._canvas.pixelAtWidgetPos(self._canvas.mapFromGlobal(cursor_pos))
         self._img_scale += 0.05 * delta / 120
         self.paintCanvas()
-        self.viewChanged.emit()
         if notify_linked:
             # Zoom the linked viewers (if any)
             for v in self._linked_viewers:
                 v.zoom(delta, notify_linked=False)
             # Adjust the scroll bar positions to keep cursor at the same pixel
-            px_pos_curr = self._canvas.pixelAtWidgetPos(self._canvas.mapFromGlobal(cursor_pos))
-            delta_widget = self._canvas.pixelToWidgetPos(px_pos_curr) - self._canvas.pixelToWidgetPos(px_pos_prev)
-            self.scrollRelative(delta_widget.x()*120/self.horizontalScrollBar().singleStep(), Qt.Horizontal, notify_linked=True)
-            self.scrollRelative(delta_widget.y()*120/self.verticalScrollBar().singleStep(), Qt.Vertical, notify_linked=True)
+            px_pos_curr = self._canvas.pixelAtWidgetPos(
+                self._canvas.mapFromGlobal(cursor_pos))
+            delta_widget = self._canvas.pixelToWidgetPos(px_pos_curr) \
+                - self._canvas.pixelToWidgetPos(px_pos_prev)
+            self.scrollRelative(
+                delta_widget.x()*120/self.horizontalScrollBar().singleStep(),
+                Qt.Horizontal, notify_linked=True)
+            self.scrollRelative(
+                delta_widget.y()*120/self.verticalScrollBar().singleStep(),
+                Qt.Vertical, notify_linked=True)
 
     @pyqtSlot(int, int)
     def scrollRelative(self, delta, orientation, notify_linked=True):
@@ -359,28 +413,9 @@ class ImageViewer(QScrollArea):
                 v.scrollAbsolute(value, orientation, notify_linked=False)
 
     def showImage(self, img, reset_scale=True):
-        if img.ndim < 3 or img.shape[2] <= 4:
-            qimage = qimage2ndarray.array2qimage(img.copy())
-        else:
-            img_width = max(400, min(img.shape[1], 1200))
-            img_height = max(200, min(img.shape[0], 1200))
-            qimage = QImage(img_width, img_height, QImage.Format_RGB888)
-            qimage.fill(Qt.white)
-            qp = QPainter()
-            qp.begin(qimage)
-            qp.setRenderHint(QPainter.HighQualityAntialiasing)
-            qp.setPen(QPen(Qt.red))
-            font = QFont()
-            font.setPointSize(20)
-            font.setBold(True)
-            font.setFamily('Helvetica')
-            qp.setFont(font)
-            qp.drawText(qimage.rect(), Qt.AlignCenter, "Error!\nCannot display a\n{:d}-channel image.".format(img.shape[2]))
-            qp.end()
-        if qimage.isNull():
-            raise ValueError('Invalid image received, cannot convert it to QImage')
+        pixmap = inspection_utils.pixmapFromNumPy(img)
         self._img_np = img.copy()
-        self._canvas.loadPixmap(QPixmap.fromImage(qimage))
+        self._canvas.loadPixmap(pixmap)
 
         # Ensure that image has a minimum size of about 32x32 px (unless it is
         # actually smaller)

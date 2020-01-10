@@ -7,8 +7,7 @@ rather complex to test).
 """
 
 import pytest
-from ..inspector import fmti, fmtb, fmtf, fmt1f, fmt2f, fmt3f, fmt4f, \
-    FilenameUtils, Inspector
+from ..inspection_utils import fmti, fmtb, fmtf, fmt1f, fmt2f, fmt3f, fmt4f, FilenameUtils
 
 
 def test_fmtb():
