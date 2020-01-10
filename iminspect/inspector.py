@@ -543,6 +543,7 @@ class ToolbarZoomWidget(QWidget):
 
     def __init__(self, central_widget, parent=None):
         super(ToolbarZoomWidget, self).__init__(parent)
+        self._show_label = True
         layout = QHBoxLayout()
         self._scale_label = QLabel('Scale:')
         layout.addWidget(self._scale_label)
@@ -565,12 +566,15 @@ class ToolbarZoomWidget(QWidget):
 
     @pyqtSlot(float)
     def setScale(self, scale):
+        if not self._show_label:
+            return
         if scale < 0.01:
             self._scale_label.setText('Scale < 1 %')
         else:
             self._scale_label.setText('Scale {:d} %'.format(int(scale*100)))
    
     def showScaleLabel(self, visible):
+        self._show_label = visible
         self._scale_label.setVisible(visible)
 
 
@@ -743,6 +747,8 @@ class InspectionWidget(QWidget):
                 ['{:d}'.format(self._visualized_pseudocolor[y, x, c])
                     for c in range(self._visualized_pseudocolor.shape[2])]) \
                     + ']'
+        
+        query['scale'] = self.imageScale()
         return query
 
     def linkAxes(self, other_inspection_widgets):
@@ -1017,7 +1023,8 @@ class Inspector(QMainWindow):
             self, data, data_type, display_settings=None,
             max_num_widgets_per_row=3, #TODO update doc!
             initial_window_size=QSize(1280, 720),
-            window_title=None):
+            window_title=None,
+            force_linked_viewers=False):
         super(Inspector, self).__init__()
         self._initial_window_size = initial_window_size
         self._window_title = window_title
@@ -1040,11 +1047,13 @@ class Inspector(QMainWindow):
         self._inspectors = list()
         self.inspectData(data, data_type,
             max_num_widgets_per_row=max_num_widgets_per_row,
-            display_settings=display_settings)
+            display_settings=display_settings,
+            force_linked_viewers=force_linked_viewers)
 
     def inspectData(
             self, data, data_type,
-            max_num_widgets_per_row=3, display_settings=None):
+            max_num_widgets_per_row=3, display_settings=None,
+            force_linked_viewers=False):
         """
         data: np.ndarray or tuple/list of np.ndarray
               if list/tuple, multiple inspection widgets will be shown in a grid layout, with maximum num, max_num_widgets_per_row per row)
@@ -1070,13 +1079,9 @@ class Inspector(QMainWindow):
                     matching_input_shape = False
             # Turn off scale display if images have different resolution
             self._zoom_widget.showScaleLabel(matching_input_shape)
-            if matching_input_shape:
+            # Link image viewers if images have the same resolution
+            if matching_input_shape or force_linked_viewers:
                 for insp in self._inspectors:
-                    insp.imgScaleChanged.connect(lambda _,s: self._zoom_widget.setScale(s))
-                    # Show initial scale value
-                    self._zoom_widget.setScale(insp.imageScale())
-            #TODO should we add stretch or a spacer widget if more than 1 row and last row is not fully filled?
-            # Link image viewers (FIXME) if images have the same resolution
                     insp.linkAxes(self._inspectors)
         else:
             # Single image to show, so we only need a single inspection widget
@@ -1086,9 +1091,9 @@ class Inspector(QMainWindow):
             layout = QHBoxLayout()
             layout.addWidget(insp)
             self._zoom_widget.showScaleLabel(True)
-            insp.imgScaleChanged.connect(lambda _,s: self._zoom_widget.setScale(s))
-            # Show initial scale value
-            self._zoom_widget.setScale(insp.imageScale())
+            # insp.imgScaleChanged.connect(lambda _,s: self._zoom_widget.setScale(s))
+            # # Show initial scale value
+            # self._zoom_widget.setScale(insp.imageScale())
         
         # Important to prevent ugly gaps between status bar and image canvas:
         margins = layout.contentsMargins()
@@ -1104,6 +1109,12 @@ class Inspector(QMainWindow):
             insp.showTooltipRequest.connect(self.showPixelValue)
             insp.fileOpenRequest.connect(self._onOpen)
             insp.fileSaveRequest.connect(self._onSave)
+            # Note that the scale label of the zoom widget has already been
+            # disabled/hidden (if there are multiple inputs and sizes differ).
+            # Thus, we can connect the imgScaleChanged widget here anyways:
+            insp.imgScaleChanged.connect(lambda _,s: self._zoom_widget.setScale(s))
+            # We also need to display the initial scale value:
+            self._zoom_widget.setScale(insp.imageScale())
 
         # self._resetLayout()
         # Now we're ready to visualize the data
@@ -1261,6 +1272,12 @@ class Inspector(QMainWindow):
             s += '<tr><td>Layer:</td><td>' + query['currlayer'] + '</td></tr>'
         if query['pseudocol'] is not None:
             s += '<tr><td>Colormap:</td><td> ' + query['pseudocol'] + '</td></tr>'
+        if query['scale'] is not None:
+            if query['scale'] < 0.01:
+                sc = '< 1'
+            else:
+                sc = '{:d}'.format(int(query['scale']*100))
+            s += '<tr><td>Scale:</td><td> ' + sc + ' %</td></tr>'
         s += '</table>'
         return s
 
@@ -1414,38 +1431,42 @@ def inspect(
         label=None,
         display_settings=None,
         initial_window_size=(1280, 720),
-        max_num_widgets_per_row=3):
+        max_num_widgets_per_row=3,
+        force_linked_viewers=False):
     """Opens a GUI to visualize the given image data.
 
-    data:          numpy ndarray to be visualized.
-    data_type:     One of the DataType enumeration or None.
-                   Useful if you want to show a label image - there's no (easy)
-                   way of automatically distinguish a monochrome image from
-                   a label image if you provide a uint8 input...
-                   If None, the "Inspector" will try to guess the data type from
-                   the input data.shape and data.dtype:
-                   * HxW or HxWx1
-                     * data.dtype is bool: DataType.BOOL
-                     * data.dtype in {uint8, float32, float64}: DataType.MONOCHROME
-                     * data.dtype in {uint16, int32}: DataType.DEPTH
-                     * else: DataType.CATEGORICAL
-                   * HxWx2: DataType.FLOW
-                   * HxWx3 or HxWx4: DataType.COLOR
-                   * HxWxC, C>4: DataType.MULTICHANNEL
-                   For example, if you have an int32 image you want to visualize
-                   as class labels (instead of depth), specify
-                   data_type=DataType.CATEGORICAL.
-    flip_channels: this qt window works with RGB images, so flip_channels must
-                   be set True if your data is BGR.
-    label:         optional window title.
+    data:           numpy ndarray to be visualized. If you want to inspect
+                    several images at once, data may be a tuple of numpy darray.
+
+    data_type:      A DataType enumeration or None. If your input "data" is a
+                    tuple, data_type must be None or a tuple of DataType.
+                    Specifying this is necessary/useful if you want to inspect
+                    a label image: there's no (easy) way of automatically
+                    distinguish a monochrome image from a label image if your
+                    input "data" is uint8.
+                    If None, the "Inspector" will try to guess the data type from
+                    the input data.shape and data.dtype, see DataType.fromData().
+
+    flip_channels:  this qt window works with RGB images, so flip_channels must
+                    be set True if your data is BGR.
+
+    label:          optionally specify a window title.
+
     display_settings: a dictionary of display settings in case you want to
-                   restore the previous settings. The current settings are
-                   returned by this function.
+                    restore the previous settings. The current settings are
+                    returned by this function.
+
     initial_window_size: Resize the window.
-    max_num_widgets_per_row: int, if the input "data" is a tuple/list of
+
+    max_num_widgets_per_row:  int, if the input "data" is a tuple/list of
                     multiple images, the GUI will show a grid of
                     floor(N/num_per_row) x num_per_row inspection widgets.
-                    #TODO update data and data_type description (support tuple/list)
+
+    force_linked_viewers: bool, if you inspect multiple images at once ("data"
+                    is a tuple), the image viewers will only be linked (i.e.
+                    scroll/zoom simultaneously) if they have the same width
+                    and height. If your input sizes differ, you can set this
+                    flag to force linked viewers.
 
     returns: the window's exit code and a dictionary of currently used display
              settings.
@@ -1460,7 +1481,9 @@ def inspect(
         display_settings=display_settings,
         initial_window_size=None if initial_window_size is None else
             QSize(initial_window_size[0], initial_window_size[1]),
-        window_title=label, max_num_widgets_per_row=max_num_widgets_per_row)
+        window_title=label,
+        max_num_widgets_per_row=max_num_widgets_per_row,
+        force_linked_viewers=force_linked_viewers)
     main_widget.show()
     rc = app.exec_()
     # Query the viewer settings (in case the user wants to restore them for the
