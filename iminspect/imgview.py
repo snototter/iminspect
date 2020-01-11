@@ -66,11 +66,13 @@ class ImageCanvas(QWidget):
         self._pixmap = QPixmap()
         self._painter = QPainter()
         self._is_rect_selectable = rect_selectable
-        self._prev_pos = None
+        self._prev_pos = None  # Image pixels!
         self._overlay_rect_color = overlay_rect_color
         self._overlay_rect_fill_opacity = overlay_rect_fill_opacity
         self._overlay_brush_color = overlay_brush_color
         self._rectangle = None
+        self._is_dragging = False
+        self._prev_drag_pos = None  # Parent widget position, i.e. usually the position within the ImageViewer (scroll area )
         self.setMouseTracking(True)
 
     def setScale(self, scale):
@@ -90,29 +92,74 @@ class ImageCanvas(QWidget):
 
     def mouseMoveEvent(self, event):
         pos = self.transformPos(event.pos())
-        if self._is_rect_selectable and Qt.LeftButton & event.buttons():
-            # Skip mouse move signals during rect selection
-            if self._prev_pos is None:
-                self._prev_pos = pos
+        if Qt.LeftButton & event.buttons():
+            # Skip mouse move signals during rect selection and dragging the image
+            if self._is_rect_selectable:
+                # Let the user select a retangle
+                if self._prev_pos is None:
+                    self._prev_pos = pos
+                else:
+                    x = [int(v) for v in [pos.x(), self._prev_pos.x()]]
+                    y = [max(0, min(self._pixmap.height()-1, int(v))) for v in [pos.y(), self._prev_pos.y()]]
+                    l, r = min(x), max(x)
+                    t, b = min(y), max(y)
+                    w = r - l
+                    h = b - t
+                    self.setRectangle((l, t, w, h))
+                # If the user would simultaneously press the right mouse button,
+                # we need to reset the cursor (since we don't allow simulatenously
+                # moving the image and selecting a rectangle).
+                QApplication.setOverrideCursor(Qt.CrossCursor)
             else:
-                x = [int(v) for v in [pos.x(), self._prev_pos.x()]]
-                y = [max(0, min(self._pixmap.height()-1, int(v))) for v in [pos.y(), self._prev_pos.y()]]
-                l, r = min(x), max(x)
-                t, b = min(y), max(y)
-                w = r - l
-                h = b - t
-                self.setRectangle((l, t, w, h))
+                self.drag(event.pos())
+        elif Qt.RightButton & event.buttons():
+            self.drag(event.pos())
         else:
             self.mouseMoved.emit(pos)
 
+    def drag(self, new_pos):
+        new_pos = self.mapToParent(new_pos)
+        delta_pos = new_pos - self._prev_drag_pos
+        dx = int(delta_pos.x())
+        dy = int(delta_pos.y())
+        if self.parent() is not None:
+            pr = self.parent().rect()
+            new_pos.setX(max(pr.left(), min(pr.right(), new_pos.x())))
+            new_pos.setY(max(pr.top(), min(pr.bottom(), new_pos.y())))
+        self._prev_drag_pos = new_pos
+        # The magic scale factor ensures that dragging is a bit more subtle
+        # than scrolling with the mouse wheel. On my system, a factor of 6
+        # means that the dragged image follows exactly the mouse pointer...
+        dx and self.scrollRequest.emit(dx * 6, Qt.Horizontal)
+        dy and self.scrollRequest.emit(dy * 6, Qt.Vertical)
+
     def mousePressEvent(self, event):
-        if self._is_rect_selectable and Qt.LeftButton == event.button():
-            self._prev_pos = self.transformPos(event.pos())
-            self._rectangle = None
+        if Qt.LeftButton == event.button():
+            # If this viewer can draw a rectangle => left button starts drawing
+            # the rect. Otherwise, left button starts dragging:
+            if self._is_rect_selectable:
+                self._prev_pos = self.transformPos(event.pos())
+                self._rectangle = None
+                QApplication.setOverrideCursor(Qt.CrossCursor)
+            else:
+                self._prev_drag_pos = self.mapToParent(event.pos())
+                self._is_dragging = True
+                QApplication.setOverrideCursor(Qt.ClosedHandCursor)
+        elif Qt.RightButton == event.button():
+            # Right button always starts dragging
+            self._prev_drag_pos = self.mapToParent(event.pos())
+            self._is_dragging = True
+            QApplication.setOverrideCursor(Qt.ClosedHandCursor)
 
     def mouseReleaseEvent(self, event):
-        if self._is_rect_selectable and Qt.LeftButton == event.button() and self._rectangle is not None:
-            self.rectSelected.emit(self._rectangle)
+        if Qt.LeftButton == event.button():
+            QApplication.restoreOverrideCursor()
+            self._is_dragging = False
+            if self._is_rect_selectable and self._rectangle is not None:
+                self.rectSelected.emit(self._rectangle)
+        elif Qt.RightButton == event.button():
+            self._is_dragging = False
+            QApplication.restoreOverrideCursor()
 
     def paintEvent(self, event):
         if not self._pixmap:
@@ -404,8 +451,10 @@ class ImageViewer(QScrollArea):
     def scrollAbsolute(self, value, orientation, notify_linked=True):
         """Sets the scrollbar to the given value."""
         bar = self._scoll_bars[orientation]
-        if value < bar.minimum() or value > bar.maximum():
-            return
+        if value < bar.minimum():
+            value = bar.minimum()
+        if value > bar.maximum():
+            value = bar.maximum()
         bar.setValue(value)
         self.viewChanged.emit()
         if notify_linked:
