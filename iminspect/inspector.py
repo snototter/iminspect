@@ -42,7 +42,7 @@ import numpy as np
 from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QFrame, QToolTip, \
-    QShortcut, QMessageBox, QScrollArea
+    QShortcut, QMessageBox, QScrollArea, QSizePolicy
 from PyQt5.QtCore import Qt, QSize, QPoint, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QCursor, QFont, QKeySequence, QResizeEvent
 
@@ -276,7 +276,7 @@ class InspectionWidget(QWidget):
             self._visualization_dropdown.set_value(settings['dd-visualization'])
             if not self._is_single_channel:
                 self._layer_dropdown.set_value(settings['dd-selected-layer'])
-                self._checkbox_global_limits.set_value(settings['cb-same-limits'])
+                self._checkbox_global_limits.set_value(settings['cb-same-limits'])#FIXME add range slider
         # Restore zoom/translation settings
         self._img_viewer.restoreDisplaySettings(settings)
         self.__updateDisplay()
@@ -478,13 +478,18 @@ class InspectionWidget(QWidget):
 
         # Prepare QLabel and stdout message:
         if self._data_type == DataType.BOOL:
+            print('Setting range')
+            self._visualization_range_slider.set_range(0, 1)
+            self._visualization_range_slider.setEnabled(False)
             lbl_txt += '<tr><td colspan="2"><b>Binary mask.</b></td></tr>'
         elif self._data_type == DataType.CATEGORICAL:
             stdout_str.append('Label image with {:d} categories'.format(len(self._data_categories)))
             lbl_txt += '<tr><td colspan="2"><b>Label image, {:d} classes.</b></td></tr>'.format(len(self._data_categories))
+            self._visualization_range_slider.set_range(0, len(self._data_categories) - 1)
         else:
             global_mean = np.mean(self._data[:])
             global_std = np.std(self._data[:])
+            self._visualization_range_slider.set_range(0, 255)
             #
             stdout_str.append('Minimum: {}'.format(self._data_limits[0]))
             stdout_str.append('Maximum: {}'.format(self._data_limits[1]))
@@ -516,6 +521,8 @@ class InspectionWidget(QWidget):
         lbl_txt += '</table>'
         self._data_label.setText(lbl_txt)
         self._data_label.update()
+        # Now we can properly format values of the range slider, too
+        self._visualization_range_slider.set_value_format_fx(self.__formatRangeSliderValue)
 
     def __resetLayout(self):
         # Add a file I/O widget to open/save an image from this
@@ -565,12 +572,21 @@ class InspectionWidget(QWidget):
         self._visualization_dropdown.setToolTip('Select raw vs. colorized')
         input_layout.addWidget(self._visualization_dropdown)
 
+        self._visualization_range_slider = inputs.RangeSliderSelectionWidget('Shown limits:',
+            min_value=0, max_value=255,
+            value_format_fx=None)
+        self._visualization_range_slider.value_changed.connect(self.__updateDisplay)
+        self._visualization_range_slider.value_changed.connect(lambda: self.showTooltipRequest.emit(self._inspector_id, None))
+        self._visualization_range_slider.setToolTip('Adjust visualization limits')
+        input_layout.addWidget(self._visualization_range_slider)
+
         # Image viewer and colorbar
         img_layout = QHBoxLayout()
         self._img_viewer = imgview.ImageViewer()
         self._img_viewer.mouseMoved.connect(lambda px: self.showTooltipRequest.emit(self._inspector_id, px))
         self._img_viewer.viewChanged.connect(lambda: self.showTooltipRequest.emit(self._inspector_id, None))
         self._img_viewer.imgScaleChanged.connect(lambda s: self.imgScaleChanged.emit(self._inspector_id, s))
+        self._img_viewer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         img_layout.addWidget(self._img_viewer)
 
         self._colorbar = inspection_widgets.ColorBar()
@@ -587,6 +603,7 @@ class InspectionWidget(QWidget):
         self._data_label_scroll_area = QScrollArea()
         self._data_label_scroll_area.setWidget(self._data_label)
         self._data_label_scroll_area.setWidgetResizable(True)
+        self._data_label_scroll_area.setMaximumHeight(100)
 
         # The "menu"/"control bar" inputs/controls looks like:
         #   File I/O  |  Visualization  | Image Information.
@@ -601,10 +618,12 @@ class InspectionWidget(QWidget):
         self._input_widget.setLayout(input_layout)
         top_row_layout.addWidget(self._input_widget)
         top_row_layout.addWidget(self._data_label_scroll_area)
+        top_row_layout.setContentsMargins(0, 0, 0, 0)
         # Set the main widget's layout
         main_layout = QVBoxLayout()
         main_layout.addLayout(top_row_layout)
         main_layout.addLayout(img_layout)
+        main_layout.setContentsMargins(5, 5, 5, 5)#FUCK FIXME FUCK FUCK
         # Set font of tool tips
         QToolTip.setFont(QFont('SansSerif', 10))
         # Reparent layout to temporary object (so we can replace it)
@@ -639,8 +658,10 @@ class InspectionWidget(QWidget):
         # Reset pseudocolor if visualization input is multi-channel
         if is_single_channel:
             self._visualization_dropdown.setEnabled(True)
+            self._visualization_range_slider.setEnabled(True)#self._data_type != DataType.BOOL)
         else:
             self._visualization_dropdown.setEnabled(False)
+            self._visualization_range_slider.setEnabled(False)
 
         # Select visualization mode
         vis_selection = self._visualization_dropdown.get_input()[0]
@@ -678,6 +699,18 @@ class InspectionWidget(QWidget):
             self._colorbar.setVisible(True)
             self._colorbar.update()
         self._reset_viewer = False
+
+    def __rangeSliderValueToDataRange(self, value):
+        if self._data_type == DataType.CATEGORICAL:
+            return self._data_categories[value]
+        else:
+            # Otherwise, the range slider has been set to [0, 255]
+            interval = self._data_limits[1] - self._data_limits[0]
+            return value / 255.0 * interval + self._data_limits[0]
+
+    def __formatRangeSliderValue(self, value):
+        print('TODO formating data:', value)
+        return self.__fmt_fx(self.__rangeSliderValueToDataRange(value))
 
 
 class Inspector(QMainWindow):

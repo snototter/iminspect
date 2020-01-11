@@ -65,7 +65,7 @@ Example: visualizing RGB image and optical flow<br/>
   * `Ctrl+{Up|Down|Left|Right}` to scroll using keyboard.
   * `Ctrl+Shift+{Up|Down|Left|Right}` scrolls faster.
 * Keyboard shortcuts:
-  * `Ctrl+Q` closes the inspection GUI.
+  * `Ctrl+Q` or `Ctrl+W` closes the inspection GUI.
   * `Ctrl+O` shows dialog to open another file.
   * `Ctrl+S` shows dialog to save input or visualization data.
 
@@ -73,6 +73,7 @@ Example: visualizing RGB image and optical flow<br/>
 ## Changelog
 * Upcoming
   * Added a range slider to adjust visualization limits on the fly.
+  * Fix running inputs demo as standalone (relative import confusion).
 * `1.2.0`
   * Support multi-channel input data (with more than 4 channels).
   * Support analysing multiple images at once, e.g. color images and corresponding optical flow.

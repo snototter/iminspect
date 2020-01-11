@@ -19,6 +19,9 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QSlider, QCheckBox, QFileDialog, QComboBox, QLineEdit, QSizePolicy
 from PyQt5.QtCore import pyqtSignal, Qt, QSize, QRegExp, QEvent, QRect, QRectF
 from PyQt5.QtGui import QRegExpValidator, QFontDatabase, QColor, QBrush, QPen, QPainter
+from vito import imutils
+
+from . import imgview
 
 
 def format_int(v, digits=None):
@@ -142,6 +145,12 @@ class RangeSlider(QWidget):
     def range(self):
         return (self._minimum, self._maximum)
 
+    def lowerValue(self):
+        return self._lower_value
+
+    def upperValue(self):
+        return self._upper_value
+
     def value(self):
         return (self._lower_value, self._upper_value)
 
@@ -170,6 +179,18 @@ class RangeSlider(QWidget):
         else:
             self._maximum = self._minimum
             self._minimum = m
+        if prev_range[0] != self._minimum or prev_range[1] != self._maximum:
+            self.__updateInterval()
+            self.rangeChanged.emit(self._minimum, self._maximum)
+
+    def setRange(self, v_min, v_max):
+        prev_range = self.range()
+        if v_min < v_max:
+            self._minimum = v_min
+            self._maximum = v_max
+        else:
+            self._minimum = v_max
+            self._maximum = v_min
         if prev_range[0] != self._minimum or prev_range[1] != self._maximum:
             self.__updateInterval()
             self.rangeChanged.emit(self._minimum, self._maximum)
@@ -329,8 +350,8 @@ class RangeSliderSelectionWidget(InputWidget):
             lbl.setMinimumWidth(min_label_width)
         layout.addWidget(lbl)
 
-        self.__value_format_fx = value_format_fx
         self._lbl_lower = QLabel(' ', parent=self)
+        self._lbl_lower.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         layout.addWidget(self._lbl_lower)
 
         self._slider = RangeSlider(min_value=min_value, max_value=max_value, parent=self)
@@ -340,24 +361,37 @@ class RangeSliderSelectionWidget(InputWidget):
             self._slider.setUpperValue(initial_upper_value)
         self._slider.lowerValueChanged.connect(self.__slider_changed)
         self._slider.upperValueChanged.connect(self.__slider_changed)
+        self._slider.rangeChanged.connect(lambda a, b: self.__slider_changed)
         layout.addWidget(self._slider)
 
         self._lbl_upper = QLabel(' ', parent=self)
         layout.addWidget(self._lbl_upper)
-
-        # Set label text to maximum value, so we can fix the height
-        self._lbl_upper.setText(value_format_fx(max_value))
-        self._lbl_upper.setFixedWidth(self._lbl_upper.sizeHint().width())
-        self._lbl_lower.setFixedWidth(self._lbl_upper.sizeHint().width())
+        self.set_value_format_fx(value_format_fx)
 
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         self.__slider_changed()
 
+    def set_value_format_fx(self, fx):
+        self.__value_format_fx = fx
+        if self.__value_format_fx is not None:
+            # Set label text to the extremal values, so we can fix the width,
+            # e.g. "False" vs "True"
+            self._lbl_upper.setText(self.__value_format_fx(self._slider.minimum()))
+            max_width = self._lbl_upper.sizeHint().width()
+            self._lbl_upper.setText(self.__value_format_fx(self._slider.maximum()))
+            max_width = max(max_width, self._lbl_upper.sizeHint().width())
+            self._lbl_upper.setFixedWidth(max_width)
+            self._lbl_lower.setFixedWidth(max_width)
+            # Adjust the text:
+            self._lbl_lower.setText(self.__value_format_fx(self._slider.lowerValue()))
+            self._lbl_upper.setText(self.__value_format_fx(self._slider.upperValue()))
+
     def __slider_changed(self, _=None):
         v = self._slider.value()
-        self._lbl_lower.setText(self.__value_format_fx(v[0]))
-        self._lbl_upper.setText(self.__value_format_fx(v[1]))
+        if self.__value_format_fx is not None:
+            self._lbl_lower.setText(self.__value_format_fx(v[0]))
+            self._lbl_upper.setText(self.__value_format_fx(v[1]))
         self._emit_value_change()
 
     def get_input(self):
@@ -367,6 +401,9 @@ class RangeSliderSelectionWidget(InputWidget):
         # v must be tuple or list, array-like
         self._slider.setLowerValue(v[0])
         self._slider.setUpperValue(v[1])
+
+    def set_range(self, v_min, v_max):
+        self._slider.setRange(v_min, v_max)
 
 
 class SliderSelectionWidget(InputWidget):
@@ -732,14 +769,9 @@ class RoiSelectWidget(InputWidget):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Image", "",
                     "Images (*.jpg *.jpeg *png);;All Files (*.*);;")
         if filename:
-            # Load as numpy array
-            import numpy as np
-            from PIL import Image
-            img_np = np.asarray(Image.open(filename).convert('RGB'))
-
             # Show modal dialog
-            from imgview import RectSelectionDialog
-            dlg = RectSelectionDialog(self)
+            img_np = imutils.imread(filename)
+            dlg = imgview.RectSelectionDialog(self)
             dlg.rectSelected.connect(self.__rect_selected)
             dlg.showImage(img_np)
             dlg.setRectangle(self.get_input())
