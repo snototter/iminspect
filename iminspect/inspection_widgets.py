@@ -5,7 +5,7 @@
 import numpy as np
 from PyQt5.QtWidgets import QWidget, QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QToolButton
 from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QPainter, QFont, QBrush, QColor, QIcon
+from PyQt5.QtGui import QPainter, QFont, QFontMetrics, QBrush, QColor, QIcon
 
 from vito import flowutils
 
@@ -57,7 +57,9 @@ class ColorBar(QWidget):
         size = self.size()
         qp = QPainter()
         qp.begin(self)
-        qp.setFont(QFont('sans-serif', self._font_size))
+        font = QFont('sans-serif', self._font_size)
+        font_metrics = QFontMetrics(font)
+        qp.setFont(font)
 
         if self._is_boolean:
             # For binary/boolean data, we only need to show the two visualized colors.
@@ -73,6 +75,8 @@ class ColorBar(QWidget):
                         'True')
             qp.drawText(QPoint(2*self._bar_padding + self._bar_width, int(size.height()*0.75)),
                         'False')
+            max_label_width = font_metrics.width('False')
+            self.setMinimumWidth(3 * self._bar_padding + self._bar_width + max_label_width)
         elif self._categories is not None:
             # For label images, we don't need the full colormap gradient, but only
             # one block for each class/label/category.
@@ -105,8 +109,14 @@ class ColorBar(QWidget):
             selected_idx = np.linspace(0, num_categories-1, num_labels)
             labels = [self._categories[int(i)] for i in selected_idx]
             lpos = [label_pos[int(i)] for i in selected_idx]
+            longest_label = ''
             for i in range(num_labels):
-                qp.drawText(lpos[i], inspection_utils.fmti(labels[i]))
+                txt = inspection_utils.fmti(labels[i])
+                if len(txt) > len(longest_label):
+                    longest_label = txt
+                qp.drawText(lpos[i], txt)
+            max_label_width = font_metrics.width(longest_label)
+            self.setMinimumWidth(3 * self._bar_padding + self._bar_width + max_label_width)
         elif self._show_flow_wheel:
             # Draw the flow color wheel, centered on the widget
             center = QPointF(size.width() / 2, size.height() / 2)
@@ -127,9 +137,12 @@ class ColorBar(QWidget):
             qp.drawPixmap(center.x() - radius, center.y() - radius, qpixmap)
             # Label it
             txt_height = int((size.height() - 2*self._bar_padding - diameter - 5) / 2)
-            if txt_height > 15:
+            if txt_height > 30:
                 qp.drawText(QRect(center.x() - radius, self._bar_padding, diameter, txt_height),
                     Qt.AlignHCenter | Qt.AlignBottom, 'Flow\nColor Wheel')
+                self.setMinimumWidth(2 * self._bar_padding + max(diameter, font_metrics.width('Color Wheel')))
+            else:
+                self.setMinimumWidth(2 * self._bar_padding + diameter)
         else:
             # Draw color gradients
             num_gradient_steps = min(size.height(), 256)
@@ -147,12 +160,19 @@ class ColorBar(QWidget):
             height_per_label = max(size.height() / self._num_labels, 2*self._font_size)
             num_labels = min(self._num_labels, int(size.height() / height_per_label))
             labels = np.linspace(self._limits[0], self._limits[1], num_labels)
+            longest_label = ''
             for i in range(num_labels):
                 pos = QPoint(2*self._bar_padding + self._bar_width,
                              int(size.height() - i * (size.height()-self._font_size)/(num_labels-1)))
-                qp.drawText(pos, fmt(labels[i]))
+                txt = fmt(labels[i])
+                qp.drawText(pos, txt)
+                if len(txt) > len(longest_label):
+                    longest_label = txt
+            max_label_width = font_metrics.width(longest_label)
+            self.setMinimumWidth(3 * self._bar_padding + self._bar_width + max_label_width)
         # We're done painting
         qp.end()
+        # Adjust widget's minimum width according to actual rendering
 
 
 class OpenInspectionFileDialog(QDialog):

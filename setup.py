@@ -37,7 +37,7 @@ setuptools.setup(
         'numpy',
         'PyQt5',
         'qimage2ndarray',
-        'vito>=1.0.2'],
+        'vito>=1.0.3'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

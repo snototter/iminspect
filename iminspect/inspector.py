@@ -482,7 +482,6 @@ class InspectionWidget(QWidget):
 
         # Prepare QLabel and stdout message:
         if self._data_type == DataType.BOOL:
-            print('Setting range')
             self._visualization_range_slider.set_range(0, 1)
             self._visualization_range_slider.setEnabled(False)
             lbl_txt += '<tr><td colspan="2"><b>Binary mask.</b></td></tr>'
@@ -663,7 +662,10 @@ class InspectionWidget(QWidget):
         # Reset pseudocolor if visualization input is multi-channel
         if is_single_channel:
             self._visualization_dropdown.setEnabled(True)
-            self._visualization_range_slider.setEnabled(True)#self._data_type != DataType.BOOL)
+            # Disable the range slider for boolean, categorical and RAW data
+            disable_range_slider = self._data_type in [DataType.BOOL, DataType.CATEGORICAL] \
+                or self._visualization_dropdown.get_input()[0] == InspectionWidget.VIS_RAW
+            self._visualization_range_slider.setEnabled(not disable_range_slider)
         else:
             self._visualization_dropdown.setEnabled(False)
             self._visualization_range_slider.setEnabled(False)
@@ -683,38 +685,72 @@ class InspectionWidget(QWidget):
                 self._visualized_pseudocolor = None
         else:
             cm = colormaps.by_name(InspectionWidget.VIS_COLORMAPS[vis_selection])
-
-            if self._data_type == DataType.CATEGORICAL:
-                pc = imvis.pseudocolor(self._data_inverse_categories,
-                    color_map=cm, limits=[0, len(self._data_categories)-1])
-            else:
-                if self._checkbox_global_limits is not None \
-                        and self._checkbox_global_limits.get_input():
-                    limits = self._data_limits
-                else:
-                    limits = [np.min(self._visualized_data[:]), np.max(self._visualized_data[:])]
-                    if self._data.dtype is np.dtype('bool'):
-                        limits = [float(v) for v in limits]
+            #TODO test if querying limits from range slider works for all data types
+            if self._visualization_range_slider.isEnabled():
+                #FIXME issue:
+#                 Traceback (most recent call last):
+#   File "../workspace/utilities/iminspect/examples/../iminspect/inspector.py", line 692, in __updateDisplay
+#     pc = imvis.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
+#   File "../workspace/utilities/iminspect/.venv3/lib/python3.6/site-packages/vito/imvis.py", line 123, in pseudocolor
+#     colorized = lut[lookup_values].astype(np.uint8)
+# IndexError: index 65025 is out of bounds for axis 0 with size 256
+                limits = self.__getRangeSliderValues()
+                print('FIXME COMPUTED limits: ', limits)
                 self._colorbar.setLimits(limits)
                 pc = imvis.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
+            else:
+                #TODO remove redundant code: (this branch only affects bool and categorical data_type)
+                if self._data_type == DataType.CATEGORICAL:
+                    pc = imvis.pseudocolor(self._data_inverse_categories,
+                        color_map=cm, limits=[0, len(self._data_categories)-1])
+                else:
+                    if self._checkbox_global_limits is not None \
+                            and self._checkbox_global_limits.get_input():
+                        limits = self._data_limits
+                    else:
+                        limits = [np.min(self._visualized_data[:]), np.max(self._visualized_data[:])]
+                        if self._data.dtype is np.dtype('bool'):
+                            limits = [float(v) for v in limits]
+                    self._colorbar.setLimits(limits)
+                    pc = imvis.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
             self._visualized_pseudocolor = pc
             self._img_viewer.showImage(pc, reset_scale=self._reset_viewer)
             self._colorbar.setColormap(cm)
             self._colorbar.setFlowWheel(False)
             self._colorbar.setVisible(True)
             self._colorbar.update()
+            # We need to update the range slider's label text whenever there's a layer change 
+            # or the "global limits" checkbox is toggled. However, these already cause a
+            # __updateDisplay() call. Thus, we just need to reset the label formatting function:
+            self._visualization_range_slider.set_value_format_fx(self.__formatRangeSliderValue)
         self._reset_viewer = False
 
+    def __getRangeSliderValues(self):
+        lower, upper = self._visualization_range_slider.get_input()
+        print('FIXME range slider lower/upper', lower, upper)
+        lower = self.__rangeSliderValueToDataRange(lower)
+        upper = self.__rangeSliderValueToDataRange(upper)
+        print('FIXME converted to range:', lower, upper)
+        return (lower, upper)
+
     def __rangeSliderValueToDataRange(self, value):
+        #TODO should we raise an error for categorical/boolean data?
         if self._data_type == DataType.CATEGORICAL:
             return self._data_categories[value]
         else:
-            # Otherwise, the range slider has been set to [0, 255]
-            interval = self._data_limits[1] - self._data_limits[0]
-            return value / 255.0 * interval + self._data_limits[0]
+            # Otherwise, the range slider has been set to [0, 255] or [0, 1]
+            slider_interval = 1 if self._data_type == DataType.BOOL else 255
+            if self._visualized_data is None or (self._checkbox_global_limits is not None
+                    and self._checkbox_global_limits.get_input()):
+                limits = self._data_limits
+            else:
+                limits = [np.min(self._visualized_data[:]), np.max(self._visualized_data[:])]
+                if self._data.dtype is np.dtype('bool'):
+                        limits = [float(v) for v in limits]
+            data_interval = limits[1] - limits[0]
+            return value / slider_interval * data_interval + limits[0]
 
     def __formatRangeSliderValue(self, value):
-        print('TODO formating data:', value)
         return self.__fmt_fx(self.__rangeSliderValueToDataRange(value))
 
 
