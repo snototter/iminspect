@@ -685,7 +685,7 @@ class InspectionWidget(QWidget):
                 self._visualized_pseudocolor = None
         else:
             cm = colormaps.by_name(InspectionWidget.VIS_COLORMAPS[vis_selection])
-            #TODO test if querying limits from range slider works for all data types and
+            # TODO test if querying limits from range slider works for all data types and
             # fancy switching between visualization layers, etc.
             if self._visualization_range_slider.isEnabled():
                 # Query range slider for the visualization limits
@@ -709,7 +709,7 @@ class InspectionWidget(QWidget):
             self._colorbar.setFlowWheel(False)
             self._colorbar.setVisible(True)
             self._colorbar.update()
-            # We need to update the range slider's label text whenever there's a layer change 
+            # We need to update the range slider's label text whenever there's a layer change
             # or the "global limits" checkbox is toggled. However, these already cause a
             # __updateDisplay() call. Thus, we just need to reset the label formatting function:
             self._visualization_range_slider.set_value_format_fx(self.__formatRangeSliderValue)
@@ -722,7 +722,7 @@ class InspectionWidget(QWidget):
         return (lower, upper)
 
     def __rangeSliderValueToDataRange(self, value):
-        #TODO should we raise an error for categorical/boolean data?
+        # TODO should we raise an error for categorical/boolean data?
         if self._data_type == DataType.CATEGORICAL:
             return self._data_categories[value]
         else:
@@ -734,7 +734,7 @@ class InspectionWidget(QWidget):
             else:
                 limits = [np.min(self._visualized_data[:]), np.max(self._visualized_data[:])]
                 if self._data.dtype is np.dtype('bool'):
-                        limits = [float(v) for v in limits]
+                    limits = [float(v) for v in limits]
             data_interval = limits[1] - limits[0]
             return value / slider_interval * data_interval + limits[0]
 
