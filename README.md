@@ -71,6 +71,8 @@ Example: visualizing RGB image and optical flow<br/>
 
 
 ## Changelog
+* Upcoming
+  * Added a range slider to adjust visualization limits on the fly.
 * `1.2.0`
   * Support multi-channel input data (with more than 4 channels).
   * Support analysing multiple images at once, e.g. color images and corresponding optical flow.
