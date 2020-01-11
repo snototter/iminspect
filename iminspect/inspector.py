@@ -259,7 +259,8 @@ class InspectionWidget(QWidget):
     def currentDisplaySettings(self):
         settings = {
             'dd-visualization': self._visualization_dropdown.get_input()[0],
-            'data-type': self._data_type
+            'data-type': self._data_type,
+            'rs-limits': (self._visualization_range_slider.get_input(), self._visualization_range_slider.get_range())
         }
         if not self._is_single_channel:
             settings['dd-selected-layer'] = self._layer_dropdown.get_input()[0]
@@ -274,9 +275,12 @@ class InspectionWidget(QWidget):
         # Restore customized UI settings only if data type didn't change.
         if self._data_type == settings['data-type']:
             self._visualization_dropdown.set_value(settings['dd-visualization'])
+            rss_values, rss_range = settings['rs-limits']
+            self._visualization_range_slider.set_range(rss_range[0], rss_range[1])
+            self._visualization_range_slider.set_value(rss_values)
             if not self._is_single_channel:
                 self._layer_dropdown.set_value(settings['dd-selected-layer'])
-                self._checkbox_global_limits.set_value(settings['cb-same-limits'])#FIXME add range slider
+                self._checkbox_global_limits.set_value(settings['cb-same-limits'])
         # Restore zoom/translation settings
         self._img_viewer.restoreDisplaySettings(settings)
         self.__updateDisplay()
@@ -623,7 +627,8 @@ class InspectionWidget(QWidget):
         main_layout = QVBoxLayout()
         main_layout.addLayout(top_row_layout)
         main_layout.addLayout(img_layout)
-        main_layout.setContentsMargins(5, 5, 5, 5)#FUCK FIXME FUCK FUCK
+        # Set just a small margin around the widget
+        main_layout.setContentsMargins(5, 5, 5, 5)
         # Set font of tool tips
         QToolTip.setFont(QFont('SansSerif', 10))
         # Reparent layout to temporary object (so we can replace it)

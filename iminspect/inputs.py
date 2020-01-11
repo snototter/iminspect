@@ -405,6 +405,9 @@ class RangeSliderSelectionWidget(InputWidget):
     def set_range(self, v_min, v_max):
         self._slider.setRange(v_min, v_max)
 
+    def get_range(self):
+        return self._slider.range()
+
 
 class SliderSelectionWidget(InputWidget):
     def __init__(
