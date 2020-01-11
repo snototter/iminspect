@@ -21,6 +21,25 @@ from PyQt5.QtCore import pyqtSignal, Qt, QSize, QRegExp, QEvent, QRect, QRectF
 from PyQt5.QtGui import QRegExpValidator, QFontDatabase, QColor, QBrush, QPen, QPainter
 
 
+def format_int(v, digits=None):
+    if digits is None:
+        fs = '{:d}'
+    else:
+        fs = '{:' + str(digits) + 'd}'
+    return fs.format(int(v))
+
+
+def format_float(v, digits=None, after_comma=None):
+    if digits is None:
+        fs = '{:f}'
+    else:
+        if after_comma is None:
+            fs = '{:' + str(digits) + 'f}'
+        else:
+            fs = '{:' + str(digits) + '.' + str(after_comma) + 'f}'
+    return fs.format(float(v))
+
+
 class HLine(QFrame):
     """A horizontal line (divider)."""
     def __init__(self, parent=None):
@@ -81,12 +100,26 @@ class CheckBoxWidget(InputWidget):
 
 class RangeSlider(QWidget):
     # Based on c++ version https://github.com/ThisIsClark/Qt-RangeSlider
-    SLIDER_BAR_HEIGHT = 4
-    HORIZONTAL_MARGIN = 1
-    HANDLE_SIDE_LENGTH = 11
+    # TODO Implement keyboard support:
+    # * Mouse selects handle for subsequent keyboard input
+    # * Tab switches to upper handle, shift+tab to lower
+    # * arrow keys increment by one
+    # TODO Implement ticks
 
+    # Padding between widget border and actual slider/bar
+    HORIZONTAL_MARGIN = 1
+
+    # Height of the slider's bar (i.e. the "line" behind the handles)
+    SLIDER_BAR_HEIGHT = 4
+
+    # The slider's handles will be drawn as squares with this side length
+    HANDLE_SIDE_LENGTH = 13
+
+    # Min/max has changed:
     rangeChanged = pyqtSignal(int, int)
+    # Lower/left value has changed
     lowerValueChanged = pyqtSignal(int)
+    # Upper/right value has changed
     upperValueChanged = pyqtSignal(int)
 
     def __init__(self, min_value=0, max_value=100,
@@ -103,20 +136,43 @@ class RangeSlider(QWidget):
         self._bg_color_disabled = Qt.darkGray
         self._bg_color = self._bg_color_enabled
         self._delta = 0
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setMouseTracking(True)
+
+    def range(self):
+        return (self._minimum, self._maximum)
+
+    def value(self):
+        return (self._lower_value, self._upper_value)
 
     def minimum(self):
         return self._minimum
 
+    def maximum(self):
+        return self._maximum
+
     def setMinimum(self, m):
-        #TODO check this logic
+        prev_range = self.range()
         if m <= self._maximum:
             self._minimum = m
         else:
             self._minimum = self._maximum
             self._maximum = m
-        self.__updateInterval()
-        self.rangeChanged.emit(self._minimum, self._maximum)
+
+        if prev_range[0] != self._minimum or prev_range[1] != self._maximum:
+            self.__updateInterval()
+            self.rangeChanged.emit(self._minimum, self._maximum)
+
+    def setMaximum(self, m):
+        prev_range = self.range()
+        if m >= self._minimum:
+            self._maximum = m
+        else:
+            self._maximum = self._minimum
+            self._minimum = m
+        if prev_range[0] != self._minimum or prev_range[1] != self._maximum:
+            self.__updateInterval()
+            self.rangeChanged.emit(self._minimum, self._maximum)
 
     def __updateInterval(self):
         self._interval = self._maximum - self._minimum
@@ -130,36 +186,29 @@ class RangeSlider(QWidget):
             self.setUpperValue(self._maximum)
         self.update()
 
-    def maximum(self):
-        return self._maximum
-
-    def setMaximum(self, m):
-        #TODO check this logic
-        if m >= self._minimum:
-            self._maximum = m
-        else:
-            self._maximum = self._minimum
-            self._minimum = m
-        self.__updateInterval()
-        self.rangeChanged.emit(self._minimum, self._maximum)
-
     def setLowerValue(self, v):
+        v = int(v)
         if v > self._maximum:
             v = self._maximum
         if v < self._minimum:
             v = self._minimum
+        prev = self._lower_value
         self._lower_value = v
-        self.lowerValueChanged.emit(self._lower_value)
-        self.update()
+        if self._lower_value != prev:
+            self.lowerValueChanged.emit(self._lower_value)
+            self.update()
 
     def setUpperValue(self, v):
+        v = int(v)
         if v > self._maximum:
             v = self._maximum
         if v < self._minimum:
             v = self._minimum
+        prev = self._upper_value
         self._upper_value = v
-        self.upperValueChanged.emit(self._upper_value)
-        self.update()
+        if self._upper_value != prev:
+            self.upperValueChanged.emit(self._upper_value)
+            self.update()
 
     def validWidth(self):
         return self.width() - RangeSlider.HORIZONTAL_MARGIN * 2 - RangeSlider.HANDLE_SIDE_LENGTH * 2
@@ -168,18 +217,16 @@ class RangeSlider(QWidget):
         painter = QPainter(self)
         # Draw background
         bg_rect = QRectF(RangeSlider.HORIZONTAL_MARGIN,
-            (self.height() - RangeSlider.SLIDER_BAR_HEIGHT) / 2, 
+            (self.height() - RangeSlider.SLIDER_BAR_HEIGHT) / 2,
             self.width() - RangeSlider.HORIZONTAL_MARGIN * 2,
             RangeSlider.SLIDER_BAR_HEIGHT)
         painter.setPen(QPen(Qt.gray, 0.8))
-        # painter.setRenderHint(QPainter::Qt4CompatiblePainting);
+        painter.setRenderHint(QPainter.Qt4CompatiblePainting)
         bg_brush = QColor(0xD0, 0xD0, 0xD0)
         painter.setBrush(bg_brush)
         painter.drawRoundedRect(bg_rect, 1, 1)
 
         # Lower value handle rect
-        # pen.setColor(Qt::darkGray);
-        # pen.setWidth(0.5);
         painter.setPen(QPen(Qt.darkGray, 0.5))
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setBrush(QBrush(QColor(0xFA, 0xFA, 0xFA)))
@@ -188,7 +235,7 @@ class RangeSlider(QWidget):
         # Upper value handle rect
         upper_handle_rect = self.upperHandleRect()
         painter.drawRoundedRect(upper_handle_rect, 2, 2)
-    
+
         # Handles
         painter.setRenderHint(QPainter.Antialiasing, False)
         bg_rect.setLeft(lower_handle_rect.right() + 0.5)
@@ -202,10 +249,12 @@ class RangeSlider(QWidget):
 
     def upperHandleRect(self):
         percentage = (self._upper_value - self._minimum) * 1.0 / self._interval
-        return self.handleRect(percentage * self.validWidth() + RangeSlider.HORIZONTAL_MARGIN + RangeSlider.HANDLE_SIDE_LENGTH)
+        return self.handleRect(percentage * self.validWidth()
+            + RangeSlider.HORIZONTAL_MARGIN + RangeSlider.HANDLE_SIDE_LENGTH)
 
     def handleRect(self, left):
-        return QRect(int(left), (self.height() - RangeSlider.HANDLE_SIDE_LENGTH) // 2, RangeSlider.HANDLE_SIDE_LENGTH, RangeSlider.HANDLE_SIDE_LENGTH)
+        return QRect(int(left), (self.height() - RangeSlider.HANDLE_SIDE_LENGTH) // 2,
+            RangeSlider.HANDLE_SIDE_LENGTH, RangeSlider.HANDLE_SIDE_LENGTH)
 
     def mousePressEvent(self, event):
         if event.buttons() & Qt.LeftButton:
@@ -215,13 +264,15 @@ class RangeSlider(QWidget):
                 self._delta = event.pos().x() - (self.lowerHandleRect().x() + RangeSlider.HANDLE_SIDE_LENGTH // 2)
             elif self._upper_handle_pressed:
                 self._delta = event.pos().x() - (self.upperHandleRect().x() + RangeSlider.HANDLE_SIDE_LENGTH // 2)
-            
+
             if event.pos().y() > 1 and event.pos().y() < self.height() - 1:
                 step = 1 if (self._interval // 10) < 1 else self._interval // 10
                 if event.pos().x() < self.lowerHandleRect().x():
                     self.setLowerValue(self._lower_value - step)
-                elif event.pos().x() > self.lowerHandleRect().x() + RangeSlider.HANDLE_SIDE_LENGTH and event.pos().x() < self.upperHandleRect().x():
-                    if event.pos().x() - (self.lowerHandleRect().x() + RangeSlider.HANDLE_SIDE_LENGTH) < (self.upperHandleRect().x() - (self.lowerHandleRect().x() + RangeSlider.HANDLE_SIDE_LENGTH)) / 2:
+                elif event.pos().x() > self.lowerHandleRect().x() + RangeSlider.HANDLE_SIDE_LENGTH \
+                        and event.pos().x() < self.upperHandleRect().x():
+                    if event.pos().x() - (self.lowerHandleRect().x() + RangeSlider.HANDLE_SIDE_LENGTH) < \
+                            (self.upperHandleRect().x() - (self.lowerHandleRect().x() + RangeSlider.HANDLE_SIDE_LENGTH)) / 2:
                         if self._lower_value + step < self._upper_value:
                             self.setLowerValue(self._lower_value + step)
                         else:
@@ -238,17 +289,18 @@ class RangeSlider(QWidget):
         if event.buttons() & Qt.LeftButton:
             if self._lower_handle_pressed:
                 if event.pos().x() - self._delta + RangeSlider.HANDLE_SIDE_LENGTH / 2 <= self.upperHandleRect().x():
-                    self.setLowerValue((event.pos().x() - self._delta - RangeSlider.HORIZONTAL_MARGIN - RangeSlider.HANDLE_SIDE_LENGTH / 2) * 1.0 / self.validWidth() * self._interval + self._minimum);
+                    self.setLowerValue((event.pos().x() - self._delta - RangeSlider.HORIZONTAL_MARGIN
+                    - RangeSlider.HANDLE_SIDE_LENGTH / 2) * 1.0 / self.validWidth() * self._interval + self._minimum)
                 else:
                     self.setLowerValue(self._upper_value)
             elif self._upper_handle_pressed:
                 if self.lowerHandleRect().x() + RangeSlider.HANDLE_SIDE_LENGTH * 1.5 <= event.pos().x() - self._delta:
-                    self.setUpperValue((event.pos().x() - self._delta - RangeSlider.HORIZONTAL_MARGIN - RangeSlider.HANDLE_SIDE_LENGTH / 2 - RangeSlider.HANDLE_SIDE_LENGTH) * 1.0 / self.validWidth() * self._interval + self._minimum);
+                    self.setUpperValue(
+                        (event.pos().x() - self._delta - RangeSlider.HORIZONTAL_MARGIN
+                        - RangeSlider.HANDLE_SIDE_LENGTH / 2 - RangeSlider.HANDLE_SIDE_LENGTH)
+                        * 1.0 / self.validWidth() * self._interval + self._minimum)
                 else:
                     self.setUpperValue(self._lower_value)
-
-    def value(self):
-        return (self._lower_value, self._upper_value)
 
     def mouseReleaseEvent(self, event):
         self._lower_handle_pressed = False
@@ -258,14 +310,17 @@ class RangeSlider(QWidget):
         if event.type() == QEvent.EnabledChange:
             self._bg_color = self._bg_color_enabled if self.isEnabled() else self._bg_color_disabled
             self.update()
-    
+
     def minimumSizeHint(self):
-        return QSize(RangeSlider.HANDLE_SIDE_LENGTH * 2 + RangeSlider.HORIZONTAL_MARGIN * 2, RangeSlider.HANDLE_SIDE_LENGTH)
+        return QSize(RangeSlider.HANDLE_SIDE_LENGTH * 2 + RangeSlider.HORIZONTAL_MARGIN * 2,
+            RangeSlider.HANDLE_SIDE_LENGTH)
+
 
 class RangeSliderSelectionWidget(InputWidget):
     def __init__(
             self, label, min_value=0, max_value=100,
-            lower_value=0, upper_value=100, 
+            initial_lower_value=0, initial_upper_value=100,
+            value_format_fx=format_int,
             min_label_width=None, parent=None):
         super(RangeSliderSelectionWidget, self).__init__(parent)
         layout = QHBoxLayout()
@@ -273,17 +328,30 @@ class RangeSliderSelectionWidget(InputWidget):
         if min_label_width is not None:
             lbl.setMinimumWidth(min_label_width)
         layout.addWidget(lbl)
-        
+
+        self.__value_format_fx = value_format_fx
+        self._lbl_lower = QLabel(' ')
+        layout.addWidget(self._lbl_lower)
+
         self._slider = RangeSlider(min_value=min_value, max_value=max_value)
-        self._slider.setLowerValue(lower_value)
-        self._slider.setUpperValue(upper_value)
-        self._slider.lowerValueChanged.connect(lambda _: self._emit_value_change())
-        self._slider.upperValueChanged.connect(lambda _: self._emit_value_change())
-        #FIXME connect!
+        self._slider.setLowerValue(initial_lower_value)
+        self._slider.setUpperValue(initial_upper_value)
+        self._slider.lowerValueChanged.connect(self.__slider_changed)
+        self._slider.upperValueChanged.connect(self.__slider_changed)
         layout.addWidget(self._slider)
+
+        self._lbl_upper = QLabel(' ')
+        layout.addWidget(self._lbl_upper)
+
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
-        #FIXME
+        self.__slider_changed()
+
+    def __slider_changed(self, _=None):
+        v = self._slider.value()
+        self._lbl_lower.setText(self.__value_format_fx(v[0]))
+        self._lbl_upper.setText(self.__value_format_fx(v[1]))
+        self._emit_value_change()
 
     def get_input(self):
         return self._slider.value()
@@ -296,14 +364,17 @@ class RangeSliderSelectionWidget(InputWidget):
 
 class SliderSelectionWidget(InputWidget):
     def __init__(
-            self, label, min_value, max_value, num_steps, initial_value=None,
-            label_format='{:d}', parent=None, min_label_width=None):
+            self, label, min_value=0, max_value=100, num_steps=10,
+            initial_value=None,
+            value_format_fx=lambda v: format_int(v, 3),  # Maps slider value => string
+            min_label_width=None,
+            parent=None):
         super(SliderSelectionWidget, self).__init__(parent)
         self._min_value = min_value
         self._max_value = max_value
         self._num_steps = num_steps
         self._step_size = (max_value - min_value) / num_steps
-        self._label_format = label_format
+        self.__value_format_fx = value_format_fx
 
         layout = QHBoxLayout()
         lbl = QLabel(label)
@@ -337,13 +408,13 @@ class SliderSelectionWidget(InputWidget):
     def __slider_value(self):
         v = self._slider.value()
         v = self._min_value + v * self._step_size
-        if 'd' in self._label_format:
-            return int(v)
+        # if 'd' in self._label_format:
+        #     return int(v)
         return v
 
     def __value_changed(self):
         val = self.__slider_value()
-        self._slider_label.setText(self._label_format.format(val))
+        self._slider_label.setText(self.__value_format_fx(val))
         self._emit_value_change()
 
     def get_input(self):
@@ -705,17 +776,20 @@ class InputDemoApplication(QMainWindow):
         main_layout.addWidget(self._dropdown)
         main_layout.addWidget(HLine())
 
-        self._slider = SliderSelectionWidget('Slide int:', 50, 100, 10, label_format='{:3d}', min_label_width=150)
+        self._slider = SliderSelectionWidget('Slide int:', 50, 100, 10,
+            value_format_fx=lambda v: format_int(v, 4), min_label_width=150)
+
         main_layout.addWidget(self._slider)
-        self._sliderf = SliderSelectionWidget('Slide float:', 0, 1, 10, label_format='{:3.1f}', min_label_width=150)
+        self._sliderf = SliderSelectionWidget('Slide float:', 0, 1, 10,
+            value_format_fx=lambda v: format_float(v, 3, 1), min_label_width=150)
         main_layout.addWidget(self._sliderf)
         self._sliderf.setEnabled(False)
         main_layout.addWidget(HLine())
 
-        self._slider_range = RangeSliderSelectionWidget('Range slider:', 0, 100)
+        self._slider_range = RangeSliderSelectionWidget('Range slider:', 0, 100,
+            value_format_fx=lambda v: format_int(v, 4), min_label_width=150)
         main_layout.addWidget(self._slider_range)
         main_layout.addWidget(HLine())
-
 
         self._cb = CheckBoxWidget('Check me', is_checked=True, min_label_width=150)
         main_layout.addWidget(self._cb)
