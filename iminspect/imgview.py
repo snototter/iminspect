@@ -106,10 +106,6 @@ class ImageCanvas(QWidget):
                     w = r - l
                     h = b - t
                     self.setRectangle((l, t, w, h))
-                # If the user would simultaneously press the right mouse button,
-                # we need to reset the cursor (since we don't allow simulatenously
-                # moving the image and selecting a rectangle).
-                QApplication.setOverrideCursor(Qt.CrossCursor)
             else:
                 self.drag(event.pos())
         elif Qt.RightButton & event.buttons():

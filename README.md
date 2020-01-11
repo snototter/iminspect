@@ -64,6 +64,7 @@ Example: visualizing RGB image and optical flow<br/>
   * `Shift+Wheel` speeds up scrolling.
   * `Ctrl+{Up|Down|Left|Right}` to scroll using keyboard.
   * `Ctrl+Shift+{Up|Down|Left|Right}` scrolls faster.
+  * Press and move left/right button to drag the image if zoomed in.
 * Keyboard shortcuts:
   * `Ctrl+Q` or `Ctrl+W` closes the inspection GUI.
   * `Ctrl+O` shows dialog to open another file.
@@ -73,6 +74,7 @@ Example: visualizing RGB image and optical flow<br/>
 ## Changelog
 * Upcoming
   * Added a range slider to adjust visualization limits on the fly.
+  * Image viewer (canvas) now supports dragging.
   * Fix running inputs demo as standalone (relative import confusion).
 * `1.2.0`
   * Support multi-channel input data (with more than 4 channels).

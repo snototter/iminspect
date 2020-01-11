@@ -878,6 +878,10 @@ class InputDemoApplication(QMainWindow):
 
 
 def run_demo():
+    print('########################################################\n')
+    print('Demonstration of custom (labelled) input widgets.\n')
+    print('########################################################')
+
     app = QApplication(['Input demo'])
     main_widget = InputDemoApplication()
     main_widget.show()
