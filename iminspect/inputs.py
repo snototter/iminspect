@@ -319,29 +319,36 @@ class RangeSlider(QWidget):
 class RangeSliderSelectionWidget(InputWidget):
     def __init__(
             self, label, min_value=0, max_value=100,
-            initial_lower_value=0, initial_upper_value=100,
+            initial_lower_value=None, initial_upper_value=None,
             value_format_fx=format_int,
             min_label_width=None, parent=None):
         super(RangeSliderSelectionWidget, self).__init__(parent)
         layout = QHBoxLayout()
-        lbl = QLabel(label)
+        lbl = QLabel(label, parent=self)
         if min_label_width is not None:
             lbl.setMinimumWidth(min_label_width)
         layout.addWidget(lbl)
 
         self.__value_format_fx = value_format_fx
-        self._lbl_lower = QLabel(' ')
+        self._lbl_lower = QLabel(' ', parent=self)
         layout.addWidget(self._lbl_lower)
 
-        self._slider = RangeSlider(min_value=min_value, max_value=max_value)
-        self._slider.setLowerValue(initial_lower_value)
-        self._slider.setUpperValue(initial_upper_value)
+        self._slider = RangeSlider(min_value=min_value, max_value=max_value, parent=self)
+        if initial_lower_value is not None:
+            self._slider.setLowerValue(initial_lower_value)
+        if initial_upper_value is not None:
+            self._slider.setUpperValue(initial_upper_value)
         self._slider.lowerValueChanged.connect(self.__slider_changed)
         self._slider.upperValueChanged.connect(self.__slider_changed)
         layout.addWidget(self._slider)
 
-        self._lbl_upper = QLabel(' ')
+        self._lbl_upper = QLabel(' ', parent=self)
         layout.addWidget(self._lbl_upper)
+
+        # Set label text to maximum value, so we can fix the height
+        self._lbl_upper.setText(value_format_fx(max_value))
+        self._lbl_upper.setFixedWidth(self._lbl_upper.sizeHint().width())
+        self._lbl_lower.setFixedWidth(self._lbl_upper.sizeHint().width())
 
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
@@ -391,6 +398,10 @@ class SliderSelectionWidget(InputWidget):
 
         self._slider_label = QLabel(' ')
         layout.addWidget(self._slider_label)
+
+        # Set label to maximum value, so we can fix the width
+        self._slider_label.setText(value_format_fx(max_value))
+        self._slider_label.setFixedWidth(self._slider_label.sizeHint().width())
 
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
