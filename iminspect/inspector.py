@@ -685,32 +685,22 @@ class InspectionWidget(QWidget):
                 self._visualized_pseudocolor = None
         else:
             cm = colormaps.by_name(InspectionWidget.VIS_COLORMAPS[vis_selection])
-            #TODO test if querying limits from range slider works for all data types
+            #TODO test if querying limits from range slider works for all data types and
+            # fancy switching between visualization layers, etc.
             if self._visualization_range_slider.isEnabled():
-                #FIXME issue:
-#                 Traceback (most recent call last):
-#   File "../workspace/utilities/iminspect/examples/../iminspect/inspector.py", line 692, in __updateDisplay
-#     pc = imvis.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
-#   File "../workspace/utilities/iminspect/.venv3/lib/python3.6/site-packages/vito/imvis.py", line 123, in pseudocolor
-#     colorized = lut[lookup_values].astype(np.uint8)
-# IndexError: index 65025 is out of bounds for axis 0 with size 256
+                # Query range slider for the visualization limits
                 limits = self.__getRangeSliderValues()
-                print('FIXME COMPUTED limits: ', limits)
                 self._colorbar.setLimits(limits)
                 pc = imvis.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
             else:
-                #TODO remove redundant code: (this branch only affects bool and categorical data_type)
+                # Categorical and boolean data requires special treatment:
                 if self._data_type == DataType.CATEGORICAL:
                     pc = imvis.pseudocolor(self._data_inverse_categories,
                         color_map=cm, limits=[0, len(self._data_categories)-1])
                 else:
-                    if self._checkbox_global_limits is not None \
-                            and self._checkbox_global_limits.get_input():
-                        limits = self._data_limits
-                    else:
-                        limits = [np.min(self._visualized_data[:]), np.max(self._visualized_data[:])]
-                        if self._data.dtype is np.dtype('bool'):
-                            limits = [float(v) for v in limits]
+                    limits = [np.min(self._visualized_data[:]), np.max(self._visualized_data[:])]
+                    if self._data.dtype is np.dtype('bool'):
+                        limits = [float(v) for v in limits]
                     self._colorbar.setLimits(limits)
                     pc = imvis.pseudocolor(self._visualized_data, color_map=cm, limits=limits)
             self._visualized_pseudocolor = pc
@@ -727,10 +717,8 @@ class InspectionWidget(QWidget):
 
     def __getRangeSliderValues(self):
         lower, upper = self._visualization_range_slider.get_input()
-        print('FIXME range slider lower/upper', lower, upper)
         lower = self.__rangeSliderValueToDataRange(lower)
         upper = self.__rangeSliderValueToDataRange(upper)
-        print('FIXME converted to range:', lower, upper)
         return (lower, upper)
 
     def __rangeSliderValueToDataRange(self, value):
