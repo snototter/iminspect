@@ -768,6 +768,7 @@ class Inspector(QMainWindow):
         self._initial_window_size = initial_window_size
         self._user_defined_window_title = window_title
         self._should_link_viewers = False
+        self._display_tooltip = True
         self._open_file_dialog = None
         self._save_file_dialog = None
         # Create the central widget (layout will be adjusted withi
@@ -942,6 +943,9 @@ class Inspector(QMainWindow):
         # Scale to original size
         shortcut_scale_original = QShortcut(QKeySequence('Ctrl+1'), self)
         shortcut_scale_original.activated.connect(self.scaleImagesOriginal)
+        # Toggle tool tip display
+        shortcut_toggle_tooltip = QShortcut(QKeySequence('Ctrl+T'), self)
+        shortcut_toggle_tooltip.activated.connect(self.toggleTooltipDisplay)
 
     @pyqtSlot(int)
     def scrollImages(self, delta, orientation):
@@ -962,6 +966,14 @@ class Inspector(QMainWindow):
     def scaleImagesFit(self):
         for insp in self._inspectors:
             insp.setImageScaleFit()
+
+    @pyqtSlot()
+    def toggleTooltipDisplay(self):
+        self._display_tooltip = not self._display_tooltip
+        if self._display_tooltip:
+            self.showPixelValue(self.__getActiveInspector(), None)
+        else:
+            QToolTip.hideText()
 
     @pyqtSlot(int)
     def __fileHasBeenOpened(self, inspector_id):
@@ -1034,7 +1046,8 @@ class Inspector(QMainWindow):
             self.statusBar().showMessage('')
             return
         self.statusBar().showMessage(self.__statusBarMessage(q))
-        QToolTip.showText(QCursor().pos(), self.__tooltipMessage(q))
+        if self._display_tooltip:
+            QToolTip.showText(QCursor().pos(), self.__tooltipMessage(q))
 
     def __getActiveInspector(self):
         """

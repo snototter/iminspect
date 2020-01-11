@@ -69,12 +69,14 @@ Example: visualizing RGB image and optical flow<br/>
   * `Ctrl+Q` or `Ctrl+W` closes the inspection GUI.
   * `Ctrl+O` shows dialog to open another file.
   * `Ctrl+S` shows dialog to save input or visualization data.
+  * `Ctrl+T` toggle tool tip display when moving the mouse over the data.
 
 
 ## Changelog
 * Upcoming
   * Added a range slider to adjust visualization limits on the fly.
   * Image viewer (canvas) now supports dragging.
+  * Toggle tool tip display.
   * Fix running inputs demo as standalone (relative import confusion).
 * `1.2.0`
   * Support multi-channel input data (with more than 4 channels).
