@@ -572,6 +572,15 @@ class ImageViewerDemoApplication(QMainWindow):
 
 
 def run_demo():
+    print('########################################################\n')
+    print('Left viewer:')
+    print('  * Use left mouse (pressed) to select/draw a rectangle')
+    print('  * Use right mouse (pressed) to drag the image\n')
+    print('Middle/right viewer:')
+    print('  * Both left & right buttons (pressed) drag the image')
+    print('\n--> All viewers are "linked", try zooming/scrolling!\n')
+    print('########################################################')
+
     app = QApplication(['Linked ImageViewer Demo'])
     import numpy as np
     from PIL import Image
