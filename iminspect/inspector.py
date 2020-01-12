@@ -482,7 +482,6 @@ class InspectionWidget(QWidget):
         lbl_txt += '<tr><td><b>Type:</b> {} ({})</td><td><b>Shape:</b> {}</td></tr>'.format(
             self._data.dtype, DataType.toStr(self._data_type), self._data.shape)
 
-        # Select format function to display data in status bar/tooltip
         if self._data_type == DataType.BOOL:
             self._data_limits = [float(v) for v in self._data_limits]
             self.__fmt_fx = inspection_utils.fmtb
@@ -491,8 +490,28 @@ class InspectionWidget(QWidget):
             self._visualization_range_slider.setEnabled(False)
         elif self._data_type == DataType.CATEGORICAL:
             self.__fmt_fx = inspection_utils.fmti
-            self._data_categories, ic = np.unique(self._data, return_inverse=True)
-            self._data_inverse_categories = ic.reshape(self._data.shape)
+            data_cats, inv_cats = np.unique(self._data, return_inverse=True)
+            if self._categorical_labels is None:
+                self._data_categories = data_cats
+                self._data_inverse_categories = inv_cats.reshape(self._data.shape)
+                num_present_categories = -1
+            else:
+                # Gather all categories provided by the user
+                self._data_categories = [k for k in self._categorical_labels]
+                # Get type of categories (needed to cast the numpy values below to perform the
+                # category lookup and to check for missing categories)
+                dctype = type(self._data_categories[0])
+                # Check if the user forgot any categories
+                num_present_categories = len(data_cats)
+                missing_cats = [dctype(k) for k in data_cats if dctype(k) not in self._data_categories]
+                if len(missing_cats) > 0:
+                    print("\n[W] Not all categories are contained in the provided 'categorical_labels'!")
+                    print('    Missing categories: ', missing_cats, '\n')
+                    self._data_categories.extend(missing_cats)
+                lookup = {k: self._data_categories.index(k) for k in self._data_categories}
+                ic = np.array([lookup[dctype(val)] for val in np.nditer(self._data)])
+                self._data_inverse_categories = ic.reshape(self._data.shape)
+
             self._colorbar.setCategories(self._data_categories)
             self._colorbar.setCategoricalLabels(self._categorical_labels)
             self._visualization_range_slider.set_range(0, len(self._data_categories) - 1)
@@ -503,17 +522,25 @@ class InspectionWidget(QWidget):
         if self._data_type == DataType.BOOL:
             lbl_txt += '<tr><td colspan="2"><b>Binary mask.</b></td></tr>'
         elif self._data_type == DataType.CATEGORICAL:
-            stdout_str.append('Label image with {:d} categories'.format(len(self._data_categories)))
-            lbl_txt += '<tr><td colspan="2"><b>Label image, {:d} classes.</b></td></tr>'.format(len(self._data_categories))
+            if num_present_categories < 0:
+                stdout_str.append('Label image with {:d} categories'.format(
+                    len(self._data_categories)))
+                lbl_txt += '<tr><td colspan="2"><b>Label image, {:d} classes.</b></td></tr>'.format(
+                    len(self._data_categories))
+            else:
+                stdout_str.append('Label image with {:d}/{:d} categories'.format(
+                    num_present_categories, len(self._data_categories)))
+                lbl_txt += '<tr><td colspan="2"><b>Label image, {:d}/{:d} classes.</b></td></tr>'.format(
+                    num_present_categories, len(self._data_categories))
         else:
             global_mean = np.mean(self._data[:])
             global_std = np.std(self._data[:])
             self._visualization_range_slider.set_range(0, 255)
-            #
+
             stdout_str.append('Minimum: {}'.format(self._data_limits[0]))
             stdout_str.append('Maximum: {}'.format(self._data_limits[1]))
             stdout_str.append('Mean:    {} +/- {}\n'.format(global_mean, global_std))
-            #
+
             lbl_txt += '<tr><td><b>Range:</b> [{}, {}]</td><td><b>Mean:</b> {} &#177; {}</td></tr>'.format(
                 self.__fmt_fx(self._data_limits[0]),
                 self.__fmt_fx(self._data_limits[1]),
@@ -526,11 +553,11 @@ class InspectionWidget(QWidget):
                     cmax = np.max(self._data[:, :, c])
                     cmean = np.mean(self._data[:, :, c])
                     cstd = np.std(self._data[:, :, c])
-                    #
+
                     stdout_str.append('Minimum on channel {}: {}'.format(c, cmin))
                     stdout_str.append('Maximum on channel {}: {}'.format(c, cmax))
                     stdout_str.append('Mean on channel {}:    {} +/- {}\n'.format(c, cmean, cstd))
-                    #
+
                     lbl_txt += '<tr><td>Channel {} range: [{}, {}]</td><td>Mean: {} &#177; {}</td></tr>'.format(
                         c, self.__fmt_fx(cmin), self.__fmt_fx(cmax), self.__fmt_fx(cmean), self.__fmt_fx(cstd))
         # Print to stdout
@@ -701,8 +728,6 @@ class InspectionWidget(QWidget):
                 self._visualized_pseudocolor = None
         else:
             cm = colormaps.by_name(InspectionWidget.VIS_COLORMAPS[vis_selection])
-            # TODO test if querying limits from range slider works for all data types and
-            # fancy switching between visualization layers, etc.
             if self._visualization_range_slider.isEnabled():
                 # Query range slider for the visualization limits
                 limits = self.__getRangeSliderValues()
@@ -820,7 +845,6 @@ class Inspector(QMainWindow):
             raise ValueError('Input data cannot be None')
 
         if inspection_utils.isArrayLike(data):
-            #FIXME support categorical_labels
             # Check if all images have the same width/height.
             matching_input_shape = True
             # Place inspection widgets in a grid layout.
@@ -830,11 +854,12 @@ class Inspector(QMainWindow):
             self._inspectors = list()
             for idx in range(num_inputs):
                 dt = data_type[idx] if inspection_utils.isArrayLike(data_type) else data_type
-                cl = categorical_labels[idx] if inspection_utils.isArrayLike(categorical_labels) else categorical_labels
+                clbl = categorical_labels[idx] if inspection_utils.isArrayLike(categorical_labels) else categorical_labels
                 insp = InspectionWidget(idx, data[idx], dt,
                     display_settings=None
                         if display_settings is None or display_settings['num-inspectors'] != num_inputs
-                        else display_settings['inspection-widgets'][idx])
+                        else display_settings['inspection-widgets'][idx],
+                        categorical_labels=clbl)
                 self._inspectors.append(insp)
                 layout.addWidget(insp,
                     idx // max_num_widgets_per_row, idx % max_num_widgets_per_row)
@@ -1139,7 +1164,7 @@ def inspect(
                     scroll/zoom simultaneously) if they have the same width
                     and height. If your input sizes differ, you can set this
                     flag to force linked viewers.
-    
+
     categorical_labels: if data_type is CATEGORICAL, you can provide custom
                     labels to be displayed on the colorbar (as a dictionary,
                     mapping data values to label strings). If the input data

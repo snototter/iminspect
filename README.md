@@ -73,7 +73,7 @@ Example: visualizing RGB image and optical flow<br/>
 
 
 ## Changelog
-* Upcoming
+* Upcoming `1.3.0`
   * Added a range slider to adjust visualization limits on the fly.
   * Image viewer (canvas) now supports dragging.
   * Support toggling the tool tip display.
