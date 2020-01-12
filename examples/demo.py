@@ -29,13 +29,6 @@ if __name__ == "__main__":
     weights_f32 = weights.astype(np.float32) / 255.0 - 0.5
     _, display_settings = inspect(weights_f32)
 
-    # Inspect an image with 11 labels, restore the previous UI settings
-    cats = (weights / 25).astype(np.int16) - 7
-    _, display_settings = inspect(
-        cats,
-        data_type=DataType.CATEGORICAL,
-        display_settings=display_settings)
-
     # Inspect a 5 category image with custom labels:
     cats = np.floor(weights / 37).astype(np.int16)
     labels = {0: 'car', 1: 'van', 2: 'truck', 3: 'bike', 4: 'person', 5: 'tree', 6: 'road', 79: 'non-existing'}
@@ -44,6 +37,14 @@ if __name__ == "__main__":
         data_type=DataType.CATEGORICAL,
         display_settings=display_settings,
         categorical_labels=labels)
+
+    # Inspect an image with 11 labels, restore the previous UI settings
+    # Note that missing label strings will be replaced by their data value.
+    cats = (weights / 25).astype(np.int16) - 5
+    _, display_settings = inspect(
+        cats,
+        data_type=DataType.CATEGORICAL,
+        display_settings=display_settings)
 
     # Inspect a depth image
     depth = imutils.imread('depth.png')

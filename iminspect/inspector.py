@@ -286,9 +286,10 @@ class InspectionWidget(QWidget):
             if not self._is_single_channel:
                 self._layer_dropdown.set_value(settings['dd-selected-layer'])
                 self._checkbox_global_limits.set_value(settings['cb-same-limits'])
+            # Restore custom category labels (unless the user already set labels)
             if self._categorical_labels is None:
-                #FIXME test
                 self._categorical_labels = settings['categorical-labels']
+                self._colorbar.setCategoricalLabels(self._categorical_labels)
         # Restore zoom/translation settings
         self._img_viewer.restoreDisplaySettings(settings)
         self.__updateDisplay()
