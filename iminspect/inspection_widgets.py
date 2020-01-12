@@ -5,7 +5,7 @@
 import numpy as np
 from PyQt5.QtWidgets import QWidget, QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QToolButton
 from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QPainter, QFont, QFontMetrics, QBrush, QColor, QIcon
+from PyQt5.QtGui import QPainter, QFont, QFontMetrics, QBrush, QColor, QIcon, QPen
 
 from vito import flowutils
 
@@ -135,14 +135,20 @@ class ColorBar(QWidget):
             # Draw the color wheel
             qpixmap = inspection_utils.pixmapFromNumPy(colorized)
             qp.drawPixmap(center.x() - radius, center.y() - radius, qpixmap)
+            # Overlay a cross
+            cx, cy = center.x(), center.y()
+            left, right = cx - radius, cx + radius
+            top, bottom = cy - radius, cy + radius
+            line_width = 1
+            qp.setPen(QPen(Qt.black, line_width))
+            qp.drawLine(cx, top + line_width, cx, bottom - line_width)
+            qp.drawLine(left + line_width, cy, right - line_width, cy)
             # Label it
             txt_height = int((size.height() - 2*self._bar_padding - diameter - 5) / 2)
             if txt_height > 30:
                 qp.drawText(QRect(center.x() - radius, self._bar_padding, diameter, txt_height),
                     Qt.AlignHCenter | Qt.AlignBottom, 'Flow\nColor Wheel')
-                self.setMinimumWidth(2 * self._bar_padding + max(diameter, font_metrics.width('Color Wheel')))
-            else:
-                self.setMinimumWidth(2 * self._bar_padding + diameter)
+            self.setMinimumWidth(2 * self._bar_padding + max(diameter, font_metrics.width('Color Wheel')))
         else:
             # Draw color gradients
             num_gradient_steps = min(size.height(), 256)
