@@ -828,6 +828,7 @@ class Inspector(QMainWindow):
             self._inspectors = list()
             for idx in range(num_inputs):
                 dt = data_type[idx] if inspection_utils.isArrayLike(data_type) else data_type
+                cl = categorical_labels[idx] if inspection_utils.isArrayLike(categorical_labels) else categorical_labels
                 insp = InspectionWidget(idx, data[idx], dt,
                     display_settings=None
                         if display_settings is None or display_settings['num-inspectors'] != num_inputs
@@ -1140,8 +1141,10 @@ def inspect(
     categorical_labels: if data_type is CATEGORICAL, you can provide custom
                     labels to be displayed on the colorbar (as a dictionary,
                     mapping data values to label strings). If the input data
-                    is a tuple/list, this should be provided as a tuple/list
-                    of such dictionaries (or None).
+                    is a tuple/list, this should be provided as:
+                    * a tuple/list of such dictionaries (if different for each
+                      inputs or not all inputs are categorical), or
+                    * a single dictionary if all inputs show the same labels.
 
     returns: the window's exit code and a dictionary of currently used display
              settings.
