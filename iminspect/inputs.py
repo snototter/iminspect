@@ -767,6 +767,7 @@ class RoiSelectWidget(InputWidget):
         for i in range(len(rect)):
             txt = '' if rect[i] is None else '{:d}'.format(rect[i])
             self._line_edits[i].setText(txt)
+        self._emit_value_change()
 
     def __from_image(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Image", "",
