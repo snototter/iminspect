@@ -66,7 +66,7 @@ Example: visualizing RGB image and optical flow<br/>
   * `Ctrl+Shift+{Up|Down|Left|Right}` scrolls faster.
   * Press and move left/right button to drag the image if zoomed in.
 * Keyboard shortcuts:
-  * `Ctrl+Q` or `Ctrl+W` closes the inspection GUI.
+  * `Ctrl+Q` and `Ctrl+W` closes the inspection GUI.
   * `Ctrl+O` shows dialog to open another file.
   * `Ctrl+S` shows dialog to save input or visualization data.
   * `Ctrl+T` toggle tool tip display when moving the mouse over the data.
@@ -76,8 +76,9 @@ Example: visualizing RGB image and optical flow<br/>
 * Upcoming
   * Added a range slider to adjust visualization limits on the fly.
   * Image viewer (canvas) now supports dragging.
-  * Toggle tool tip display.
-  * Fix running inputs demo as standalone (relative import confusion).
+  * Support toggling the tool tip display.
+  * Support adding custom labels for categorical data.
+  * Fix running `inputs.py` as standalone demo (relative import confusion).
 * `1.2.0`
   * Support multi-channel input data (with more than 4 channels).
   * Support analysing multiple images at once, e.g. color images and corresponding optical flow.

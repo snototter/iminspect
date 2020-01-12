@@ -187,7 +187,8 @@ class InspectionWidget(QWidget):
     def __init__(
             self,
             inspector_id, data, data_type,
-            display_settings=None):
+            display_settings=None,
+            categorical_labels=None):
         super(InspectionWidget, self).__init__()
         # ID to distinguish signals from different inspectors (used when displaying multiple images)
         self._inspector_id = inspector_id
@@ -205,11 +206,13 @@ class InspectionWidget(QWidget):
         self._reset_viewer = True
         # Function handle to format data values
         self.__fmt_fx = None
+        # Category labels to be displayed if data is CATEGORICAL
+        self._categorical_labels = None
         # Handles to file I/O dialogs
         self._save_file_dialog = None
         self._open_file_dialog = None
         # Now, show the given data:
-        self.inspectData(data, data_type, display_settings)
+        self.inspectData(data, data_type, display_settings, categorical_labels)
 
     def getData(self):
         return self._data
@@ -217,7 +220,7 @@ class InspectionWidget(QWidget):
     def getDataType(self):
         return self._data_type
 
-    def inspectData(self, data, data_type=None, display_settings=None):
+    def inspectData(self, data, data_type=None, display_settings=None, categorical_labels=None):
         """
         Adjust the widget to show the given input data.
 
@@ -234,6 +237,7 @@ class InspectionWidget(QWidget):
             self._is_single_channel = (data.ndim < 3) or (data.shape[2] == 1)
         self._visualized_data = None
         self._visualized_pseudocolor = None
+        self._categorical_labels = categorical_labels
         self._reset_viewer = True
         # Set up GUI
         self.__resetLayout()
@@ -260,7 +264,8 @@ class InspectionWidget(QWidget):
         settings = {
             'dd-visualization': self._visualization_dropdown.get_input()[0],
             'data-type': self._data_type,
-            'rs-limits': (self._visualization_range_slider.get_input(), self._visualization_range_slider.get_range())
+            'rs-limits': (self._visualization_range_slider.get_input(), self._visualization_range_slider.get_range()),
+            'categories': self._categorical_labels
         }
         if not self._is_single_channel:
             settings['dd-selected-layer'] = self._layer_dropdown.get_input()[0]
@@ -281,6 +286,8 @@ class InspectionWidget(QWidget):
             if not self._is_single_channel:
                 self._layer_dropdown.set_value(settings['dd-selected-layer'])
                 self._checkbox_global_limits.set_value(settings['cb-same-limits'])
+            # FIXME restore categories if applicable (each data value must be in
+            # the dictionary)
         # Restore zoom/translation settings
         self._img_viewer.restoreDisplaySettings(settings)
         self.__updateDisplay()
@@ -304,7 +311,13 @@ class InspectionWidget(QWidget):
         # Representation of raw data
         query['currlayer'] = None
         if self._is_single_channel:
-            query['rawstr'] = self.__fmt_fx(self._data[y, x])
+            value = self._data[y, x]
+            if self._data_type == DataType.CATEGORICAL \
+                    and self._categorical_labels is not None \
+                    and value in self._categorical_labels:
+                query['rawstr'] = self._categorical_labels[value] + ' (' + self.__fmt_fx(value) + ')'
+            else:
+                query['rawstr'] = self.__fmt_fx(value)
         else:
             query['rawstr'] = '[' + ', '.join([self.__fmt_fx(
                 self._data[y, x, c])
@@ -472,23 +485,24 @@ class InspectionWidget(QWidget):
             self._data_limits = [float(v) for v in self._data_limits]
             self.__fmt_fx = inspection_utils.fmtb
             self._colorbar.setBoolean(True)
+            self._visualization_range_slider.set_range(0, 1)
+            self._visualization_range_slider.setEnabled(False)
         elif self._data_type == DataType.CATEGORICAL:
             self.__fmt_fx = inspection_utils.fmti
             self._data_categories, ic = np.unique(self._data, return_inverse=True)
             self._data_inverse_categories = ic.reshape(self._data.shape)
             self._colorbar.setCategories(self._data_categories)
+            self._colorbar.setCategoricalLabels(self._categorical_labels)
+            self._visualization_range_slider.set_range(0, len(self._data_categories) - 1)
         else:
             self.__fmt_fx = inspection_utils.bestFormatFx(self._data_limits)
 
         # Prepare QLabel and stdout message:
         if self._data_type == DataType.BOOL:
-            self._visualization_range_slider.set_range(0, 1)
-            self._visualization_range_slider.setEnabled(False)
             lbl_txt += '<tr><td colspan="2"><b>Binary mask.</b></td></tr>'
         elif self._data_type == DataType.CATEGORICAL:
             stdout_str.append('Label image with {:d} categories'.format(len(self._data_categories)))
             lbl_txt += '<tr><td colspan="2"><b>Label image, {:d} classes.</b></td></tr>'.format(len(self._data_categories))
-            self._visualization_range_slider.set_range(0, len(self._data_categories) - 1)
         else:
             global_mean = np.mean(self._data[:])
             global_std = np.std(self._data[:])
@@ -724,7 +738,7 @@ class InspectionWidget(QWidget):
     def __rangeSliderValueToDataRange(self, value):
         # TODO should we raise an error for categorical/boolean data?
         if self._data_type == DataType.CATEGORICAL:
-            return self._data_categories[value]
+            return self._data_categories[max(0, min(len(self._data_categories)-1, value))]
         else:
             # Otherwise, the range slider has been set to [0, 255] or [0, 1]
             slider_interval = 1 if self._data_type == DataType.BOOL else 255
@@ -763,7 +777,8 @@ class Inspector(QMainWindow):
             max_num_widgets_per_row=3,
             initial_window_size=QSize(1280, 720),
             window_title=None,
-            force_linked_viewers=False):
+            force_linked_viewers=False,
+            categorical_labels=None):
         super(Inspector, self).__init__()
         self._initial_window_size = initial_window_size
         self._user_defined_window_title = window_title
@@ -787,12 +802,14 @@ class Inspector(QMainWindow):
         self.inspectData(data, data_type,
             max_num_widgets_per_row=max_num_widgets_per_row,
             display_settings=display_settings,
-            force_linked_viewers=force_linked_viewers)
+            force_linked_viewers=force_linked_viewers,
+            categorical_labels=categorical_labels)
 
     def inspectData(
             self, data, data_type,
             max_num_widgets_per_row=3, display_settings=None,
-            force_linked_viewers=False):
+            force_linked_viewers=False,
+            categorical_labels=None):
         """
         Loads the given data and resets the widget's layout.
         See inspector.inspect() for documentation of the parameters.
@@ -801,6 +818,7 @@ class Inspector(QMainWindow):
             raise ValueError('Input data cannot be None')
 
         if inspection_utils.isArrayLike(data):
+            #FIXME support categorical_labels
             # Check if all images have the same width/height.
             matching_input_shape = True
             # Place inspection widgets in a grid layout.
@@ -831,7 +849,8 @@ class Inspector(QMainWindow):
             insp = InspectionWidget(0, data, data_type,
                 display_settings=None
                     if display_settings is None or display_settings['num-inspectors'] != 1
-                    else display_settings['inspection-widgets'][0])
+                    else display_settings['inspection-widgets'][0],
+                categorical_labels=categorical_labels)
             self._inspectors = [insp]
             layout = QHBoxLayout()
             layout.addWidget(insp)
@@ -1081,7 +1100,8 @@ def inspect(
         display_settings=None,
         initial_window_size=(1280, 720),
         max_num_widgets_per_row=3,
-        force_linked_viewers=False):
+        force_linked_viewers=False,
+        categorical_labels=None):
     """Opens a GUI to visualize the given image data.
 
     data:           numpy ndarray to be visualized. If you want to inspect
@@ -1116,6 +1136,12 @@ def inspect(
                     scroll/zoom simultaneously) if they have the same width
                     and height. If your input sizes differ, you can set this
                     flag to force linked viewers.
+    
+    categorical_labels: if data_type is CATEGORICAL, you can provide custom
+                    labels to be displayed on the colorbar (as a dictionary,
+                    mapping data values to label strings). If the input data
+                    is a tuple/list, this should be provided as a tuple/list
+                    of such dictionaries (or None).
 
     returns: the window's exit code and a dictionary of currently used display
              settings.
@@ -1132,7 +1158,8 @@ def inspect(
             QSize(initial_window_size[0], initial_window_size[1]),
         window_title=label,
         max_num_widgets_per_row=max_num_widgets_per_row,
-        force_linked_viewers=force_linked_viewers)
+        force_linked_viewers=force_linked_viewers,
+        categorical_labels=categorical_labels)
     main_widget.show()
     rc = app.exec_()
     # Query the viewer settings (in case the user wants to restore them for the

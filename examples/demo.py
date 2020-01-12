@@ -36,6 +36,15 @@ if __name__ == "__main__":
         data_type=DataType.CATEGORICAL,
         display_settings=display_settings)
 
+    # Inspect a 5 category image with custom labels:
+    cats = np.floor(weights / 37).astype(np.int16)
+    labels = {0: 'car', 1: 'van', 2: 'truck', 3: 'bike', 4: 'person', 5: 'tree', 6: 'road', 79: 'non-existing'}
+    _, display_settings = inspect(
+        cats,
+        data_type=DataType.CATEGORICAL,
+        display_settings=display_settings,
+        categorical_labels=labels)
+
     # Inspect a depth image
     depth = imutils.imread('depth.png')
     inspect(depth)

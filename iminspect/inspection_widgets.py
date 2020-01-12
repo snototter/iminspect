@@ -2,6 +2,7 @@
 # coding=utf-8
 """Inspect matrix/image data"""
 
+import math
 import numpy as np
 from PyQt5.QtWidgets import QWidget, QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QToolButton
 from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSignal, pyqtSlot
@@ -32,6 +33,7 @@ class ColorBar(QWidget):
         self._show_flow_wheel = False
         self._is_boolean = False
         self._categories = None
+        self._categorical_labels = None
 
     def setBoolean(self, b):
         # If the visualized data is boolean, set this to True!
@@ -40,6 +42,10 @@ class ColorBar(QWidget):
     def setCategories(self, c):
         # If the visualized data is categorical (i.e. a label image), set the unique categories!
         self._categories = c
+
+    def setCategoricalLabels(self, lbl_dict):
+        # If the data is categorical, you can provide a dict {category: 'some label'}
+        self._categorical_labels = lbl_dict
 
     def setLimits(self, limits):
         self._limits = limits
@@ -97,13 +103,13 @@ class ColorBar(QWidget):
                 label_pos.append(QPoint(2*self._bar_padding + self._bar_width, ly))
                 # Move to next category.
                 top += step_height
-            # Now the label positions are computed from largest to smallest, but
-            # categories are listed from smallest to largest, so:
+            # Now the label positions are computed from largest value to smallest, but
+            # categories are listed from smallest value to largest. Thus:
             label_pos.reverse()
             # Draw labels (vertically centered on corresponding filled rects)
             # Check, if all labels fit (font size vs widget height).
-            height_per_label = max(size.height() / num_categories, 2*self._font_size)
-            num_labels = min(num_categories, int(size.height() / height_per_label))
+            height_per_label = max(size.height() / num_categories, 1.1*self._font_size)
+            num_labels = min(num_categories, int(math.ceil(size.height() / height_per_label)))
             # If there's too little space, select a subset of labels (and their
             # corresponding text positions).
             selected_idx = np.linspace(0, num_categories-1, num_labels)
@@ -111,7 +117,10 @@ class ColorBar(QWidget):
             lpos = [label_pos[int(i)] for i in selected_idx]
             longest_label = ''
             for i in range(num_labels):
-                txt = inspection_utils.fmti(labels[i])
+                if self._categorical_labels is not None and labels[i] in self._categorical_labels:
+                    txt = self._categorical_labels[labels[i]]
+                else:
+                    txt = inspection_utils.fmti(labels[i])
                 if len(txt) > len(longest_label):
                     longest_label = txt
                 qp.drawText(lpos[i], txt)
