@@ -265,7 +265,7 @@ class InspectionWidget(QWidget):
             'dd-visualization': self._visualization_dropdown.get_input()[0],
             'data-type': self._data_type,
             'rs-limits': (self._visualization_range_slider.get_input(), self._visualization_range_slider.get_range()),
-            'categories': self._categorical_labels
+            'categorical-labels': self._categorical_labels
         }
         if not self._is_single_channel:
             settings['dd-selected-layer'] = self._layer_dropdown.get_input()[0]
@@ -286,8 +286,9 @@ class InspectionWidget(QWidget):
             if not self._is_single_channel:
                 self._layer_dropdown.set_value(settings['dd-selected-layer'])
                 self._checkbox_global_limits.set_value(settings['cb-same-limits'])
-            # FIXME restore categories if applicable (each data value must be in
-            # the dictionary)
+            if self._categorical_labels is None:
+                #FIXME test
+                self._categorical_labels = settings['categorical-labels']
         # Restore zoom/translation settings
         self._img_viewer.restoreDisplaySettings(settings)
         self.__updateDisplay()
