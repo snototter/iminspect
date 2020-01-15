@@ -58,9 +58,9 @@ if __name__ == "__main__":
     inspect(flow)
 
     # Visualize standard RGB image
-    lena = imutils.imread('lena.jpg')
-    inspect(lena, label='Demo RGB [{}]'.format(lena.dtype))
+    rgb = imutils.imread('flamingo.jpg')
+    inspect(rgb, label='Demo RGB [{}]'.format(rgb.dtype))
 
     # # Inspect RGBA image
-    # lena = imutils.imread('lena-alpha.png')
-    # inspect(lena, label='Demo RGBA [{}]'.format(lena.dtype))
+    # rgb = imutils.imread('flamingo-alpha.png')
+    # inspect(rgb, label='Demo RGBA [{}]'.format(rgb.dtype))

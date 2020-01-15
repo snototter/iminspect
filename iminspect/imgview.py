@@ -584,7 +584,7 @@ def run_demo():
     import sys
     img_np = np.asarray(Image.open(
         os.path.join(os.path.dirname(
-            os.path.abspath(__file__)), '../examples/lena.jpg')).convert('RGB'))
+            os.path.abspath(__file__)), '../examples/flamingo.jpg')).convert('RGB'))
     main_window = ImageViewerDemoApplication()
     main_window.show()
     main_window.showImage(img_np)
