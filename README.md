@@ -57,18 +57,18 @@ Example: visualizing RGB image and optical flow<br/>
   * `Ctrl+Shift+Wheel` to speed up zooming.
   * `Ctrl+{+|-}` to zoom in/out.
   * `Ctrl+Shift+{+|-}` to zoom in/out faster.
-  * `Ctrl+F` zoom such that image fills the available canvas.
-  * `Ctrl+1` zoom to original size.
+  * `Ctrl+F` to zoom such that the image fills the available canvas.
+  * `Ctrl+1` to scale to original size.
 * Scrolling:
-  * `Wheel` scroll up/down.
+  * `Wheel` scrolls up/down.
   * `Shift+Wheel` speeds up scrolling.
   * `Ctrl+{Up|Down|Left|Right}` to scroll using keyboard.
-  * `Ctrl+Shift+{Up|Down|Left|Right}` scrolls faster.
+  * `Ctrl+Shift+{Up|Down|Left|Right}` to scroll faster/further. 
   * Press and move left/right button to drag the image if zoomed in.
 * Keyboard shortcuts:
-  * `Ctrl+Q` and `Ctrl+W` closes the inspection GUI.
-  * `Ctrl+O` shows dialog to open another file.
-  * `Ctrl+S` shows dialog to save input or visualization data.
+  * `Ctrl+Q` and `Ctrl+W` close the inspection GUI.
+  * `Ctrl+O` shows a dialog to open another file.
+  * `Ctrl+S` shows a dialog to save either the (raw) input or its current visualization.
   * `Ctrl+T` toggle tool tip display when moving the mouse over the data.
 
 
