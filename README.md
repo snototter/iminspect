@@ -4,22 +4,15 @@
 
 A python utility package for image/matrix visualization.
 
-Moving from MATLAB to python I was missing basic inspection tools for image data.
-Thus, `iminspect` provides a collection of basic visualization/inspection capabilities along with a minimalist Qt-based GUI.
-The goal is to allow quick and easy visualization/analysis of:
+Moving from MATLAB to python I was missing fast and easy-to-use inspection tools for image data.
+Thus, `iminspect` provides a collection of visualization/inspection capabilities along with a Qt-based GUI.
+The goal is to enable quick and easy visualization/analysis of:
 * color images,
 * monochrome images (i.e. any type of 2D matrices),
 * label images (i.e. categorical data),
 * binary masks,
 * depth maps, and
 * optical flow data.
-
-
-## Dependencies
-* `numpy`, for matrix manipulation
-* `PyQt5`, for the graphical user interface
-* `qimage2ndarray`, to convert numpy ndarrays to Qt images
-* `vito`, a lightweight vision tool package
 
 
 ## Example usage:
@@ -48,6 +41,13 @@ Example: visualizing a mask image<br/>
 
 Example: visualizing RGB image and optical flow<br/>
 ![Screenshot optical flow](https://github.com/snototter/iminspect/blob/master/screenshots/rgb-flow.jpg?raw=true "iminspect GUI")
+
+
+## Dependencies
+* `numpy`, for matrix manipulation
+* `PyQt5`, for the graphical user interface
+* `qimage2ndarray`, to convert numpy ndarrays to Qt images
+* `vito`, a lightweight vision tool package
 
 
 ## UI Documentation
