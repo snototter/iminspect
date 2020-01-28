@@ -34,7 +34,10 @@ def format_int(v, digits=None):
 
 def format_float(v, digits=None, after_comma=None):
     if digits is None:
-        fs = '{:f}'
+        if after_comma is None:
+            fs = '{:f}'
+        else:
+            fs = '{:.' + str(after_comma) + 'f}'
     else:
         if after_comma is None:
             fs = '{:' + str(digits) + 'f}'
@@ -68,6 +71,9 @@ class InputWidget(QWidget):
 
     def _emit_value_change(self):
         self.value_changed.emit(self.get_input())
+
+    def value(self):
+        return self.get_input()
 
 
 class CheckBoxWidget(InputWidget):

@@ -73,6 +73,8 @@ Example: visualizing RGB image and optical flow<br/>
 
 
 ## Changelog
+* `1.3.1`
+  * Minor extensions to user `inputs` subpackage.
 * `1.3.0`
   * Added a range slider to adjust visualization limits on the fly.
   * Image viewer (canvas) now supports dragging.
