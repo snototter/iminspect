@@ -642,7 +642,8 @@ class SelectDirEntryType(Enum):
     """Enumeration of supported file/folder selection widgets."""
     EXISTING_FOLDER = 1
     FILENAME_OPEN = 2
-    FILENAME_SAVE = 3
+    FILENAMES_OPEN = 3
+    FILENAME_SAVE = 4
 
 
 class SelectDirEntryWidget(InputWidget):
@@ -682,6 +683,8 @@ class SelectDirEntryWidget(InputWidget):
             self._btn.clicked.connect(self.__select_folder)
         elif selection_type == SelectDirEntryType.FILENAME_OPEN:
             self._btn.clicked.connect(self.__select_open_file)
+        elif selection_type == SelectDirEntryType.FILENAMES_OPEN:
+            self._btn.clicked.connect(self.__select_open_files)
         elif selection_type == SelectDirEntryType.FILENAME_SAVE:
             self._btn.clicked.connect(self.__select_save_file)
         else:
@@ -697,10 +700,19 @@ class SelectDirEntryWidget(InputWidget):
 
     def __set_selection(self, selection):
         if selection:
-            if self._relative_base_path is not None:
-                selection = os.path.relpath(selection, self._relative_base_path)
+            def _adjust_path(p):
+                if self._relative_base_path is not None:
+                    return os.path.relpath(p, self._relative_base_path)
+                return p
+
+            if isinstance(selection, str):
+                selection = _adjust_path(selection)
+                slbl = selection # TODO Clip if too long
+            else:
+                slbl = '{:d} files'.format(len(selection))
+                selection = [_adjust_path(s) for s in selection]
             self._selection = selection
-            self._selection_label.setText(selection)  # TODO cut off string if longer than X chars
+            self._selection_label.setText(slbl)
         else:
             self._selection = None
             self._selection_label.setText(type(self).EMPTY_SELECTION)
@@ -716,6 +728,11 @@ class SelectDirEntryWidget(InputWidget):
         filename, _ = QFileDialog.getOpenFileName(self, "Select file", "", self._filters,
             self._initial_filter, QFileDialog.DontUseNativeDialog)
         self.__set_selection(filename)
+
+    def __select_open_files(self):
+        filenames, _ = QFileDialog.getOpenFileNames(self, "Select files", "", self._filters,
+            self._initial_filter, QFileDialog.DontUseNativeDialog)
+        self.__set_selection(filenames)#fucker
 
     def __select_save_file(self):
         filename, _ = QFileDialog.getSaveFileName(self, "Select file", "", self._filters,
