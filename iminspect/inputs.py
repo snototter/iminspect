@@ -107,6 +107,87 @@ class CheckBoxWidget(InputWidget):
         self._cb.setChecked(b)
 
 
+class ColorIndicator(QWidget):
+    """
+    Draws a right aligned rectangle of dimension
+    H x (width_factor * H) with the currently set color.
+    H = widget.height() - 2*padding.
+    If width_factor is negative, W = widget.width() - 2*padding.
+    """
+    clicked = pyqtSignal()
+
+    def __init__(self, padding=0, width_factor=4, parent=None):
+        super(ColorIndicator, self).__init__(parent)
+        self._color = None
+        self._padding = padding
+        self._width_factor = width_factor
+        self.setMinimumWidth(30)
+
+    def set_color(self, color):
+        self._color = color
+
+    def set_padding(self, padding):
+        self._padding = padding
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+
+    def paintEvent(self, event):
+        if self._color is None:
+            return
+        painter = QPainter(self)
+        painter.setPen(QPen(Qt.black, 1.5))
+        painter.setRenderHint(QPainter.Qt4CompatiblePainting)
+        brush = QBrush(self._color)
+        painter.setBrush(brush)
+        h = self.height() - 2*self._padding
+        if self._width_factor <= 0:
+            w = self.width() - 2*self._padding
+        else:
+            w = self._width_factor*h
+        rect = QRectF(
+            self.width() - w - self._padding,
+            self._padding, w, h)
+        painter.drawRoundedRect(rect,
+            max(self._padding, 2), max(self._padding, 2))
+        self.setMinimumWidth(w)
+
+
+class ColorPickerWidget(InputWidget):
+    def __init__(
+            self, label, initial_color=(255, 255, 255), parent=None,
+            min_label_width=None, padding=0, width_factor=3):
+        super(ColorPickerWidget, self).__init__(parent)
+        lbl = QLabel(label)
+        if min_label_width is not None:
+            lbl.setMinimumWidth(min_label_width)
+
+        self._color_indicator = ColorIndicator(width_factor=width_factor, padding=padding)
+
+        self._color_indicator.set_color(QColor(*initial_color))
+
+        # self._cb = QCheckBox()
+        # self._cb.setChecked(is_checked)
+        # self._cb.setLayoutDirection(Qt.LeftToRight if checkbox_left else Qt.RightToLeft)
+        # self._cb.setStyleSheet("QCheckBox::indicator {width:18px; height:18px;};")
+        # self._cb.toggled.connect(self._emit_value_change)
+        #TODO color picker
+
+        layout = QHBoxLayout()
+        layout.addWidget(lbl)
+        layout.addWidget(self._color_indicator)
+        layout.addStretch()
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+    def get_input(self):
+        return None
+
+    def set_value(self, b):
+        raise NotImplementedError()
+
+
 class RangeSlider(QWidget):
     # Based on c++ version https://github.com/ThisIsClark/Qt-RangeSlider
     # TODO Implement keyboard support:
@@ -642,8 +723,7 @@ class SelectDirEntryType(Enum):
     """Enumeration of supported file/folder selection widgets."""
     EXISTING_FOLDER = 1
     FILENAME_OPEN = 2
-    FILENAMES_OPEN = 3
-    FILENAME_SAVE = 4
+    FILENAME_SAVE = 3
 
 
 class SelectDirEntryWidget(InputWidget):
@@ -683,8 +763,6 @@ class SelectDirEntryWidget(InputWidget):
             self._btn.clicked.connect(self.__select_folder)
         elif selection_type == SelectDirEntryType.FILENAME_OPEN:
             self._btn.clicked.connect(self.__select_open_file)
-        elif selection_type == SelectDirEntryType.FILENAMES_OPEN:
-            self._btn.clicked.connect(self.__select_open_files)
         elif selection_type == SelectDirEntryType.FILENAME_SAVE:
             self._btn.clicked.connect(self.__select_save_file)
         else:
@@ -700,19 +778,10 @@ class SelectDirEntryWidget(InputWidget):
 
     def __set_selection(self, selection):
         if selection:
-            def _adjust_path(p):
-                if self._relative_base_path is not None:
-                    return os.path.relpath(p, self._relative_base_path)
-                return p
-
-            if isinstance(selection, str):
-                selection = _adjust_path(selection)
-                slbl = selection # TODO Clip if too long
-            else:
-                slbl = '{:d} files'.format(len(selection))
-                selection = [_adjust_path(s) for s in selection]
+            if self._relative_base_path is not None:
+                selection = os.path.relpath(selection, self._relative_base_path)
             self._selection = selection
-            self._selection_label.setText(slbl)
+            self._selection_label.setText(selection)  # TODO cut off string if longer than X chars
         else:
             self._selection = None
             self._selection_label.setText(type(self).EMPTY_SELECTION)
@@ -728,11 +797,6 @@ class SelectDirEntryWidget(InputWidget):
         filename, _ = QFileDialog.getOpenFileName(self, "Select file", "", self._filters,
             self._initial_filter, QFileDialog.DontUseNativeDialog)
         self.__set_selection(filename)
-
-    def __select_open_files(self):
-        filenames, _ = QFileDialog.getOpenFileNames(self, "Select files", "", self._filters,
-            self._initial_filter, QFileDialog.DontUseNativeDialog)
-        self.__set_selection(filenames)#fucker
 
     def __select_save_file(self):
         filename, _ = QFileDialog.getSaveFileName(self, "Select file", "", self._filters,
