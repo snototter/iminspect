@@ -73,6 +73,9 @@ Example: visualizing RGB image and optical flow<br/>
 
 
 ## Changelog
+* `1.3.2`
+  * Added color picker widget to `inputs`.
+  * Support multiple file selection dialog.
 * `1.3.1`
   * Minor extensions to user `inputs` subpackage.
 * `1.3.0`

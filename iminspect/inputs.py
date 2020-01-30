@@ -16,8 +16,9 @@ import sys
 from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, \
-    QSlider, QCheckBox, QFileDialog, QComboBox, QLineEdit, QSizePolicy
-from PyQt5.QtCore import pyqtSignal, Qt, QSize, QRegExp, QEvent, QRect, QRectF
+    QSlider, QCheckBox, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
+    QColorDialog
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QSize, QRegExp, QEvent, QRect, QRectF
 from PyQt5.QtGui import QRegExpValidator, QFontDatabase, QColor, QBrush, QPen, QPainter
 from vito import imutils
 
@@ -139,7 +140,8 @@ class ColorIndicator(QWidget):
         painter = QPainter(self)
         painter.setPen(QPen(Qt.black, 1.5))
         painter.setRenderHint(QPainter.Qt4CompatiblePainting)
-        brush = QBrush(self._color)
+        brush = QBrush(self._color if self.isEnabled() else QColor(
+            self._color.red(), self._color.green(), self._color.blue(), 100))
         painter.setBrush(brush)
         h = self.height() - 2*self._padding
         if self._width_factor <= 0:
@@ -159,20 +161,15 @@ class ColorPickerWidget(InputWidget):
             self, label, initial_color=(255, 255, 255), parent=None,
             min_label_width=None, padding=0, width_factor=3):
         super(ColorPickerWidget, self).__init__(parent)
+        self._color = initial_color
         lbl = QLabel(label)
         if min_label_width is not None:
             lbl.setMinimumWidth(min_label_width)
 
         self._color_indicator = ColorIndicator(width_factor=width_factor, padding=padding)
 
-        self._color_indicator.set_color(QColor(*initial_color))
-
-        # self._cb = QCheckBox()
-        # self._cb.setChecked(is_checked)
-        # self._cb.setLayoutDirection(Qt.LeftToRight if checkbox_left else Qt.RightToLeft)
-        # self._cb.setStyleSheet("QCheckBox::indicator {width:18px; height:18px;};")
-        # self._cb.toggled.connect(self._emit_value_change)
-        #TODO color picker
+        self._color_indicator.set_color(self.qcolor())
+        self._color_indicator.clicked.connect(self.__choose)
 
         layout = QHBoxLayout()
         layout.addWidget(lbl)
@@ -181,11 +178,26 @@ class ColorPickerWidget(InputWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
-    def get_input(self):
-        return None
+    @pyqtSlot()
+    def __choose(self):
+        c = QColorDialog.getColor(
+            initial=self.qcolor(),
+            parent=self,
+            options=QColorDialog.DontUseNativeDialog)
+        if c.isValid():
+            self.set_value((c.red(), c.green(), c.blue()))
 
-    def set_value(self, b):
-        raise NotImplementedError()
+    def qcolor(self):
+        return QColor(*self._color)
+
+    def get_input(self):
+        return self._color
+
+    def set_value(self, rgb):
+        self._color = rgb
+        self._color_indicator.set_color(self.qcolor())
+        self.value_changed.emit(self.get_input())
+        self.update()
 
 
 class RangeSlider(QWidget):
