@@ -159,9 +159,14 @@ class ColorIndicator(QWidget):
 class ColorPickerWidget(InputWidget):
     def __init__(
             self, label, initial_color=(255, 255, 255), parent=None,
-            min_label_width=None, padding=0, width_factor=3):
+            min_label_width=None, padding=0, width_factor=3,
+            with_alpha=False):
         super(ColorPickerWidget, self).__init__(parent)
+        self._with_alpha = with_alpha
         self._color = initial_color
+        if with_alpha and len(self._color) == 3:
+            self._color = (*self._color, 255)
+
         lbl = QLabel(label)
         if min_label_width is not None:
             lbl.setMinimumWidth(min_label_width)
@@ -180,10 +185,13 @@ class ColorPickerWidget(InputWidget):
 
     @pyqtSlot()
     def __choose(self):
+        opt = QColorDialog.DontUseNativeDialog
+        if self._with_alpha:
+            opt = opt | QColorDialog.ShowAlphaChannel
         c = QColorDialog.getColor(
             initial=self.qcolor(),
             parent=self,
-            options=QColorDialog.DontUseNativeDialog)
+            options=opt)
         if c.isValid():
             self.set_value((c.red(), c.green(), c.blue()))
 
