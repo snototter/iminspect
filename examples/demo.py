@@ -19,6 +19,8 @@ from vito import imutils
 from vito import flowutils
 
 if __name__ == "__main__":
+    # If the user wants to load an image from disk:
+    inspect(None)
     # Inspect a boolean mask
     mask = imutils.imread('space-invader.png', mode='L').astype(np.bool)
     inspect(mask)

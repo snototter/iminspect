@@ -45,7 +45,7 @@ Example: visualizing RGB image and optical flow<br/>
 
 ## Dependencies
 * `numpy`, for matrix manipulation
-* `PyQt5`, for the graphical user interface
+* `PyQt5`, for the graphical user interface - if there's a `PyQt5`-related install error, you need to upgrade `pip` via `pip install --upgrade pip`.
 * `qimage2ndarray`, to convert numpy ndarrays to Qt images
 * `vito`, a lightweight vision tool package
 
@@ -73,6 +73,8 @@ Example: visualizing RGB image and optical flow<br/>
 
 
 ## Changelog
+* `1.3.3`
+  * Add functionality to open the inspectory without data (in case you want to load from disk).
 * `1.3.2`
   * Added color picker widget to `inputs`.
   * Support multiple file selection dialog.

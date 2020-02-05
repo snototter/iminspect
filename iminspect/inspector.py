@@ -99,6 +99,7 @@ class DataType(Enum):
         """
         Make a best guess on the proper data type given the numpy ndarray
         input npdata. In particular, we consider npdata.ndim and dtype:
+        * None inputs will be mapped to DataType.COLOR by default.
         * HxW or HxWx1
             * data.dtype is bool: DataType.BOOL
             * data.dtype in {uint8, float32, float64}: DataType.MONOCHROME
@@ -108,6 +109,8 @@ class DataType(Enum):
         * HxWx3 or HxWx4: DataType.COLOR
         * HxWxC, C>4: DataType.MULTICHANNEL
         """
+        if npdata is None:
+            return DataType.COLOR
         if npdata.ndim < 3 or (npdata.ndim == 3 and npdata.shape[2] == 1):
             if npdata.dtype is np.dtype('bool'):
                 return DataType.BOOL
@@ -791,9 +794,11 @@ class Inspector(QMainWindow):
         # If there's a user-defined label, use this:
         if label is not None:
             return label
+        if data is None:
+            return 'Data Inspection'
         # If we show multiple images, show [multi]:
         if inspection_utils.isArrayLike(data):
-            return 'iminspect [multi]'
+            return 'Data Inspection [multiple viewers]'
         # Otherwise, use the given data_type (or compute it from data if None)
         if data_type is None:
             data_type = DataType.fromData(data)
@@ -842,7 +847,8 @@ class Inspector(QMainWindow):
         See inspector.inspect() for documentation of the parameters.
         """
         if data is None:
-            raise ValueError('Input data cannot be None')
+            #raise ValueError('Input data cannot be None')
+            data = inspection_utils.emptyInspectionImage()
 
         if inspection_utils.isArrayLike(data):
             # Check if all images have the same width/height.

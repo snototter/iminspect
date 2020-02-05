@@ -85,6 +85,26 @@ def pixmapFromNumPy(img_np):
     return QPixmap.fromImage(qimage)
 
 
+def emptyInspectionImage():
+    """Returns a dummy image to be displayed if the inspector is
+    called with invalid (None) data."""
+    img_width = 640
+    img_height = 320
+    qimage = QImage(img_width, img_height, QImage.Format_RGB32)
+    qimage.fill(Qt.white)
+    qp = QPainter()
+    qp.begin(qimage)
+    qp.setRenderHint(QPainter.HighQualityAntialiasing)
+    qp.setPen(QPen(QColor(200, 0, 0)))
+    font = QFont()
+    font.setPointSize(20)
+    font.setBold(True)
+    font.setFamily('Helvetica')
+    qp.setFont(font)
+    qp.drawText(qimage.rect(), Qt.AlignCenter, "No data given!")
+    qp.end()
+    return qimage2ndarray.rgb_view(qimage)
+
 class FilenameUtils(object):
     @staticmethod
     def ensureFileExtension(filename, extensions):
