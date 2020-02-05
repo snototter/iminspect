@@ -74,7 +74,7 @@ Example: visualizing RGB image and optical flow<br/>
 
 ## Changelog
 * `1.3.3`
-  * Add functionality to open the inspectory without data (in case you want to load from disk).
+  * Add functionality to open the inspector without data (in case you want to load from disk).
 * `1.3.2`
   * Added color picker widget to `inputs`.
   * Support multiple file selection dialog.
