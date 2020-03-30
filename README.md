@@ -74,6 +74,8 @@ Example: visualizing RGB image and optical flow<br/>
 
 
 ## Changelog
+* `1.3.4`
+  * Minor tweaks to the `inputs` subpackage.
 * `1.3.3`
   * Add functionality to open the inspector without data (in case you want to load from disk).
 * `1.3.2`

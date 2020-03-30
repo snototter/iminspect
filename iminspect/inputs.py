@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, \
     QSlider, QCheckBox, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
     QColorDialog
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QSize, QRegExp, QEvent, QRect, QRectF
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QSize, QRegExp, QEvent, QRect, QRectF, QFileInfo
 from PyQt5.QtGui import QRegExpValidator, QFontDatabase, QColor, QBrush, QPen, QPainter
 from vito import imutils
 
@@ -819,13 +819,23 @@ class SelectDirEntryWidget(InputWidget):
         self.__set_selection(filename)
 
     def __select_save_file(self):
-        filename, _ = QFileDialog.getSaveFileName(self, "Select file", "", self._filters,
+        filename, used_filter = QFileDialog.getSaveFileName(self, "Select file", "", self._filters,
             self._initial_filter, QFileDialog.DontUseNativeDialog)
+        #TODO used_filter is a string, parse the first extension out of it and apply as default
+        # print('Used filter', used_filter, type(used_filter))
+        # if filename is not None:
+        #     fi = QFileInfo(filename)
+        #     print('WOHOOOOO fileinfo: ', fi, fi.suffix(), type(fi))
         self.__set_selection(filename)
 
 
 class RoiSelectWidget(InputWidget):
-    def __init__(self, label, roi=None, parent=None, min_label_width=None):
+    def __init__(self, label, roi=None, parent=None, min_label_width=None,
+            box_labels=['L:', 'T:', 'W:', 'H:'], support_image_selection=True):
+        """
+        * Overwrite the default textbox labels via 'box_labels'
+        * Enable/disable the "Select from image" button via 'support_image_selection'
+        """
         super(RoiSelectWidget, self).__init__(parent)
         layout = QHBoxLayout()
         lbl = QLabel(label)
@@ -834,8 +844,10 @@ class RoiSelectWidget(InputWidget):
         layout.addWidget(lbl)
         layout.addStretch()
 
+        if len(box_labels) != 4:
+            raise RuntimeError("Parameter 'box_labels' must contain exactly 4 labels!")
         self._line_edits = list()
-        lbls = ['L:', 'T:', 'W:', 'H:']
+        lbls = box_labels
         for idx in range(4):
             layout.addWidget(QLabel(lbls[idx]))
 
@@ -850,9 +862,10 @@ class RoiSelectWidget(InputWidget):
             layout.addWidget(le)
             self._line_edits.append(le)
 
-        btn = QPushButton('From Image')
-        btn.clicked.connect(self.__from_image)
-        layout.addWidget(btn)
+        if support_image_selection:
+            btn = QPushButton('From Image')
+            btn.clicked.connect(self.__from_image)
+            layout.addWidget(btn)
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
@@ -949,7 +962,8 @@ class InputDemoApplication(QMainWindow):
         main_layout.addWidget(self._cb)
         main_layout.addWidget(HLine())
 
-        self._roi = RoiSelectWidget('ROI', roi=(10, 20, 50, 30), min_label_width=150)
+        self._roi = RoiSelectWidget('ROI', roi=(10, 20, 50, 30), min_label_width=150,
+            box_labels=['Left:', 'Top:', 'Width:', 'Height:'], support_image_selection=True)
         main_layout.addWidget(self._roi)
         main_layout.addWidget(HLine())
 
