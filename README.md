@@ -43,6 +43,10 @@ Example: visualizing a mask image<br/>
 Example: visualizing RGB image and optical flow<br/>
 ![Screenshot optical flow](https://github.com/snototter/iminspect/blob/master/screenshots/rgb-flow.jpg?raw=true "iminspect GUI")
 
+## Custom input widgets:
+The `iminspect.inputs` subpackage provides common user input widgets, e.g. to select a rectangular region-of-interest, enter an IP address, etc. See the `examples/inputs_demo.py` application on how to use it. Exemplary screenshot:<br/>
+![Screenshot inputs demo](https://github.com/snototter/iminspect/blob/master/screenshots/input-widgets.jpg?raw=true "Common input widgets")
+
 
 ## Dependencies
 * `numpy`, for matrix manipulation
