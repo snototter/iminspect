@@ -560,14 +560,15 @@ class SliderSelectionWidget(InputWidget):
         self.__value_changed()
 
     def __to_slider_value(self, value):
-        v = (value - self._min_value)/self._step_size
+        v = round((value - self._min_value)/self._step_size)
         return v
 
     def __slider_value(self):
         v = self._slider.value()
         v = self._min_value + v * self._step_size
-        # if 'd' in self._label_format:
-        #     return int(v)
+        # The user must cast the value to the proper scalar type (adding
+        # type configuration/constraints would complicate this simple widget
+        # unnecessarily imho)
         return v
 
     def __value_changed(self):
@@ -943,26 +944,27 @@ class InputDemoApplication(QMainWindow):
         main_layout.addWidget(self._dropdown)
         main_layout.addWidget(HLine())
 
-        self._slider = SliderSelectionWidget('Slide int:', 50, 100, 10,
+        self._slider = SliderSelectionWidget('Slider (int):', 50, 100, 10,
             value_format_fx=lambda v: format_int(v, 4), min_label_width=150)
 
         main_layout.addWidget(self._slider)
-        self._sliderf = SliderSelectionWidget('Slide float:', 0, 1, 10,
-            value_format_fx=lambda v: format_float(v, 3, 1), min_label_width=150)
+        self._sliderf = SliderSelectionWidget('Slider (float):', 0.1, 0.8, 14, initial_value=0.25,
+            value_format_fx=lambda v: format_float(v, 3, 2), min_label_width=150)
         main_layout.addWidget(self._sliderf)
-        self._sliderf.setEnabled(False)
+        # self._sliderf.setEnabled(False)
         main_layout.addWidget(HLine())
 
         self._slider_range = RangeSliderSelectionWidget('Range slider:', 0, 100,
+            initial_lower_value=23, initial_upper_value=42,
             value_format_fx=lambda v: format_int(v, 4), min_label_width=150)
         main_layout.addWidget(self._slider_range)
         main_layout.addWidget(HLine())
 
-        self._cb = CheckBoxWidget('Check me', is_checked=True, min_label_width=150)
+        self._cb = CheckBoxWidget('Toggle me:', is_checked=True, min_label_width=150)
         main_layout.addWidget(self._cb)
         main_layout.addWidget(HLine())
 
-        self._roi = RoiSelectWidget('ROI', roi=(10, 20, 50, 30), min_label_width=150,
+        self._roi = RoiSelectWidget('Region of interest:', roi=(10, 20, 50, 30), min_label_width=150,
             box_labels=['Left:', 'Top:', 'Width:', 'Height:'], support_image_selection=True)
         main_layout.addWidget(self._roi)
         main_layout.addWidget(HLine())
