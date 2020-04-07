@@ -796,6 +796,9 @@ class SelectDirEntryWidget(InputWidget):
 
     def get_input(self):
         return self._selection
+    
+    def set_value(self, f):
+        self.__set_selection(f)
 
     def __set_selection(self, selection):
         if selection:

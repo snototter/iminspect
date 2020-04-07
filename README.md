@@ -78,6 +78,8 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
 
 
 ## Changelog
+* `1.3.6`
+  * Minor tweaks to the `inputs` subpackage.
 * `1.3.5`
   * Bug fix - rounding issues during initialization of custom slider widgets (which use floats).
 * `1.3.4`
