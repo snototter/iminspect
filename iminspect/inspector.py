@@ -306,9 +306,12 @@ class InspectionWidget(QWidget):
 
     def getPixelValue(self, px_x, px_y):
         """Retrieves the image data at location (px_x, px_y)."""
+        if self._data is None:
+            return None
         x = int(px_x)
         y = int(px_y)
-        if x < 0 or x >= self._data.shape[1] or y < 0 or y >= self._data.shape[0]:
+        width = self._data.shape[1] if self._data.ndim > 1 else 1
+        if x < 0 or x >= width or y < 0 or y >= self._data.shape[0]:
             return None
         query = dict()
         query['pos'] = '({:d}, {:d})'.format(x, y)
@@ -316,7 +319,7 @@ class InspectionWidget(QWidget):
         # Representation of raw data
         query['currlayer'] = None
         if self._is_single_channel:
-            value = self._data[y, x]
+            value = self._data[y] if self._data.ndim == 1 else self._data[y, x]
             if self._data_type == DataType.CATEGORICAL \
                     and self._categorical_labels is not None \
                     and value in self._categorical_labels:
