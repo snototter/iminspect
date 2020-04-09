@@ -873,7 +873,7 @@ class Inspector(QMainWindow):
                 layout.addWidget(insp,
                     idx // max_num_widgets_per_row, idx % max_num_widgets_per_row)
                 if data[idx].shape[0] != data[0].shape[0] \
-                        or data[idx].shape[1] != data[0].shape[1]:
+                    or (data[idx].ndim > 1 and data[0].ndim > 1 and data[idx].shape[1] != data[0].shape[1]):
                     matching_input_shape = False
             # Turn off scale display if images have different resolution
             self._zoom_widget.showScaleLabel(matching_input_shape)
