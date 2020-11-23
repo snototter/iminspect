@@ -56,6 +56,8 @@ class ImageCanvas(QWidget):
     rectSelected = pyqtSignal(tuple)
     # Scaling factor of displayed image changed
     imgScaleChanged = pyqtSignal(float)
+    # File has been dropped onto canvas
+    filenameDropped = pyqtSignal(str)
 
     def __init__(
             self, parent=None, rect_selectable=False,
@@ -74,6 +76,7 @@ class ImageCanvas(QWidget):
         self._is_dragging = False
         self._prev_drag_pos = None  # Parent widget position, i.e. usually the position within the ImageViewer (scroll area )
         self.setMouseTracking(True)
+        self.setAcceptDrops(True)
 
     def setScale(self, scale):
         prev_scale = self._scale
@@ -156,6 +159,20 @@ class ImageCanvas(QWidget):
         elif Qt.RightButton == event.button():
             self._is_dragging = False
             QApplication.restoreOverrideCursor()
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasFormat('text/plain'):
+            txt = event.mimeData().text()
+            if txt.startswith('file://'):
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        txt = event.mimeData().text()[7:]
+        self.filenameDropped.emit(txt.strip())
 
     def paintEvent(self, event):
         if not self._pixmap:
@@ -300,6 +317,8 @@ class ImageViewer(QScrollArea):
     imgScaleChanged = pyqtSignal(float)
     # The view changed due to the user scrolling or zooming
     viewChanged = pyqtSignal()
+    # File has been dropped onto canvas
+    filenameDropped = pyqtSignal(str)
 
     def __init__(self, parent=None, viewer_type=ImageViewerType.VIEW_ONLY, **kwargs):
         super(ImageViewer, self).__init__(parent)
@@ -344,6 +363,7 @@ class ImageViewer(QScrollArea):
         self._canvas.mouseMoved.connect(self.mouseMoved)
         self._canvas.imgScaleChanged.connect(self.imgScaleChanged)
         self._canvas.imgScaleChanged.connect(lambda _: self.viewChanged.emit())
+        self._canvas.filenameDropped.connect(self.filenameDropped)
 
         self.setWidget(self._canvas)
         self.setWidgetResizable(True)

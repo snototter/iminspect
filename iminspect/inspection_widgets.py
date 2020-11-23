@@ -191,7 +191,7 @@ class ColorBar(QWidget):
 
 
 class OpenInspectionFileDialog(QDialog):
-    def __init__(self, data_type=None, thumbnail=None, parent=None):
+    def __init__(self, data_type=None, thumbnail=None, filename_suggestion=None, parent=None):
         """
         Dialog to open a file from disk.
 
@@ -199,14 +199,15 @@ class OpenInspectionFileDialog(QDialog):
                     file filter.
         thumbnail:  None or QPixmap, will be shown so the user knows which image
                     s/he is going to replace by the loaded file.
+        filename_suggestion: If provided, the file browser will be pre-set to this filename/path.
         """
         super(OpenInspectionFileDialog, self).__init__(parent)
         self._filename = None
         self._data_type = None
         self._confirmed = False
-        self.__prepareLayout(data_type, thumbnail)
+        self.__prepareLayout(data_type, filename_suggestion, thumbnail)
 
-    def __prepareLayout(self, current_data_type, current_thumbnail):
+    def __prepareLayout(self, current_data_type, filename_suggestion, current_thumbnail):
         self.setWindowTitle('Open File')
         layout = QVBoxLayout()
         file_filters = 'Images (*.bmp *.jpg *.jpeg *.png *.ppm);;Optical Flow (*.flo);;NumPy Arrays (*.npy);;All Files (*.*)'
@@ -234,8 +235,6 @@ class OpenInspectionFileDialog(QDialog):
             (inspector.DataType.DEPTH, 'Depth'),
             (inspector.DataType.FLOW, 'Optical Flow'),
             (inspector.DataType.MULTICHANNEL, 'Multi-channel')])
-        if current_data_type is not None:
-            self._type_widget.set_value(current_data_type)
         layout.addWidget(self._type_widget)
 
         btn_layout = QHBoxLayout()
@@ -264,9 +263,17 @@ class OpenInspectionFileDialog(QDialog):
             hlayout.addLayout(layout)
             self.setLayout(hlayout)
 
+        # Pre-set filename
+        if filename_suggestion is not None:
+            self._file_widget.set_value(filename_suggestion)
+        # Pre-set data type
+        if current_data_type is not None:
+            self._type_widget.set_value(current_data_type)
+
     def open(self):
         super(OpenInspectionFileDialog, self).open()
-        self._file_widget.open_dialog()
+        if self._filename is None:
+            self._file_widget.open_dialog()
 
     @pyqtSlot(object)
     def __fileSelected(self, filename):

@@ -39,12 +39,14 @@
 # this increases the code complexity unnecessarily.
 
 import numpy as np
+import os
 from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QFrame, QToolTip, \
     QShortcut, QMessageBox, QScrollArea, QSizePolicy
 from PyQt5.QtCore import Qt, QSize, QPoint, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QCursor, QFont, QKeySequence, QResizeEvent
+from PIL import UnidentifiedImageError
 
 from vito import imutils
 from vito import colormaps
@@ -129,6 +131,31 @@ class DataType(Enum):
                 return DataType.MULTICHANNEL
         else:
             raise ValueError('Input data with ndim > 3 (i.e. %d) is not supported!' % npdata.ndim)
+    
+    @staticmethod
+    def fromFilename(filename):
+        """
+        Returns the best guess on the proper data type given the filename.
+        In particular, we check the extension and return:
+        * *.flo files: DataType.FLOW
+        * *.npy files: DataType.MULTICHANNEL
+        * Image files will be opened with default settings and are either DataType.MONOCHROME or .COLOR
+        Raises a ValueError if the file extension is not a supported image extension.
+        """
+        _, ext = os.path.splitext(filename.lower())
+        if ext == '.flo':
+            return DataType.FLOW
+        elif ext == '.npy':
+            return DataType.MULTICHANNEL
+        else:
+            try:
+                data = imutils.imread(filename)
+                if data.ndim < 3 or data.shape[2] == 1:
+                    return DataType.MONOCHROME
+                return DataType.COLOR
+            except UnidentifiedImageError:
+                raise ValueError('Filename is not a loadable image.')
+        return DataType.COLOR
 
     @staticmethod
     def pilModeFor(data_type, data=None):
@@ -440,6 +467,29 @@ class InspectionWidget(QWidget):
             msg.setWindowTitle('Error')
             msg.exec()
 
+    @pyqtSlot(str)
+    def __openDroppedFilename(self, filename):
+        if filename is None:
+            return
+        # 1) Guess datatype
+        try:
+            dtype = DataType.fromFilename(filename)
+        except ValueError:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText('{:s} is not a supported image file.'.format(filename))
+            msg.setWindowTitle('Error')
+            msg.exec()
+            return
+        # 2) Initialize open dialog (pre-set filename and datatype)
+        self._open_file_dialog = inspection_widgets.OpenInspectionFileDialog(
+            data_type=dtype,
+            thumbnail=None if self._data is None else self._img_viewer.imagePixmap(),
+            filename_suggestion=filename,
+            parent=self)
+        self._open_file_dialog.finished.connect(self.__onOpenFinished)
+        self._open_file_dialog.open()
+
     @pyqtSlot()
     def __onOpenFinished(self):
         res = self._open_file_dialog.getSelection()
@@ -638,6 +688,7 @@ class InspectionWidget(QWidget):
         self._img_viewer.mouseMoved.connect(lambda px: self.showTooltipRequest.emit(self._inspector_id, px))
         self._img_viewer.viewChanged.connect(lambda: self.showTooltipRequest.emit(self._inspector_id, None))
         self._img_viewer.imgScaleChanged.connect(lambda s: self.imgScaleChanged.emit(self._inspector_id, s))
+        self._img_viewer.filenameDropped.connect(self.__openDroppedFilename)
         self._img_viewer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         img_layout.addWidget(self._img_viewer)
 

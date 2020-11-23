@@ -78,6 +78,9 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
 
 
 ## Changelog
+* `1.3.7`
+  * Support opening files by dropping them into the viewer.
+  * Added `__main__` to run module (open the inspector) via `python -m iminspect`
 * `1.3.6`
   * Inspector handles 1D inputs.
   * Minor tweaks to the `inputs` subpackage.
