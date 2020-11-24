@@ -1,42 +1,55 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Inspect matrix/image data"""
-# TODO Usability improvement:
-# Status bar for each InspectionWidget where the pixel value is shown (i.e.
-# you can inspect a pixel value for multiple images at once).
-# However, this is only useful if the displayed images have the same size and
-# are "linked".
 
-# TODO Usability improvement:
-# Let the user explicitly enable/disable linking of the viewers. Currently,
-# viewers will always be "linked" if all images have the same width/height.
-
-# TODO Usability improvement:
-# Implement a range slider widget which allows the user to adjust the
-# pseudocolor value limits on-the-fly.
-
-# TODO Usability improvement:
-# When showing multiple images, add an option to use the same visualization
-# data range across all images.
-
-# TODO Usability improvement:
-# Incrementally in-/decreasing the zoom factor worked "good enough" so far
-# however, "fast zooming" seems a bit "too fast" sometimes. Especially "fast
-# zooming" out is really fast (decreases by 50% with each wheel tick).
-
-# TODO GUI issue:
-# Initial window resize won't scale to the exact specified size.
-# QApplication().instance().processEvents() doesn't help either. The widgets
-# (e.g. image canvas) will be resized "shortly" after initializing the QMainWindow
-# for a second time. Needs thorough investigation.
-
+# TODO Ideas and potential usability improvements:
+# * Load multiple files via drag & drop from file browser/external image viewer
+#   => requires layout reset; potential issue: variable number of inspection
+#      widgets (what's the expected behavior if there are already multple widgets
+#      open for inspection?)
+#
+# * Handle infinite and NaN values
+#   => Extend the data overview/summary label: "Contains special values: NaN, Inf" 
+#      (list only those that are actually present)
+#
+# * Add input boxes to range slider for manually typing the upper/lower limits
+#
+# * GUI issue:
+#   Initial window resize won't scale to the exact specified size.
+#   QApplication().instance().processEvents() doesn't help either. The widgets
+#   (e.g. image canvas) will be resized "shortly" after initializing the QMainWindow
+#   for a second time. Needs thorough investigation.
+#
+# * Usability improvement:
+#   Incrementally in-/decreasing the zoom factor worked "good enough" so far
+#   however, "fast zooming" seems a bit "too fast" sometimes. Especially "fast
+#   zooming" out is really fast (decreases by 50% with each wheel tick).
+#
+# * Usability improvement:
+#   Status bar for each InspectionWidget where the pixel value is shown (i.e.
+#   you can inspect a pixel value for multiple images at once).
+#   However, this is only useful if the displayed images have the same size and
+#   are "linked".
+#
+# * Usability improvement:
+#   Let the user explicitly enable/disable linking of the viewers. Currently,
+#   viewers will always be "linked" if all images have the same width/height.
+#
+# * Usability improvement:
+#   Implement a range slider widget which allows the user to adjust the
+#   pseudocolor value limits on-the-fly.
+#
+# * Usability improvement:
+#   When showing multiple images, add an option to use the same visualization
+#   data range across all images.
+#
 # * Potential (usability) issue:
-# Consider this scenario: Initially, the user may have shown two same-sized
-# images (viewer axes have been linked). Now, a differently sized image has
-# been opened. Thus, the viewers will still/again be linked which may lead
-# to minor zooming/scrolling issues.
-# Currently, I prefer not to deal with such unexpected user behavior, as
-# this increases the code complexity unnecessarily.
+#   Consider this scenario: Initially, the user may have shown two same-sized
+#   images (viewer axes have been linked). Now, a differently sized image has
+#   been opened. Thus, the viewers will still/again be linked which may lead
+#   to minor zooming/scrolling issues.
+#   Currently, I prefer not to deal with such unexpected user behavior, as
+#   this increases the code complexity unnecessarily.
 
 import numpy as np
 import os
