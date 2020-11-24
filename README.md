@@ -78,6 +78,8 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
 
 
 ## Changelog
+* `1.3.8`
+  * Added support for opening files via dropping them from external image viewer applications. Tested with common Linux viewers (`eog` and `geeqie`).
 * `1.3.7`
   * Support opening files by dropping them into the viewer.
   * Added `__main__` to run module (open the inspector) via `python -m iminspect`
