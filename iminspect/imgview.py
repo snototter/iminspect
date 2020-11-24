@@ -4,6 +4,7 @@
 A Qt-based image viewer which supports zooming and scrolling.
 """
 
+import os
 from enum import Enum
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QScrollArea,\
     QHBoxLayout, QVBoxLayout, QDialog
@@ -42,6 +43,40 @@ class ImageLabel(QWidget):
             (event.rect().width() - scaled.width()) // 2,
             (event.rect().height() - scaled.height()) // 2)
         painter.drawPixmap(pos, scaled)
+
+def isDroppableMimeType(mime_data):
+    """
+    Returns True if the given mime_data belongs to a file which can
+    be dropped onto the ImageViewer/Canvas, i.e. it must be either a file
+    or a URI of a local file (as we won't support downloading files for now).
+    """
+    if mime_data.hasUrls():
+        is_local_file = [os.path.exists(url.toLocalFile()) for url in mime_data.urls()]
+        if any(is_local_file):
+            return True
+    if mime_data.hasText():
+        if mime_data.text().startswith('file://'):
+            return True
+    return False
+
+
+def getDroppableFilename(mime_data):
+    """
+    Returns the filename of a file dropped into the canvas (if it was
+    accepted via @see isDroppableMimeType).
+    """
+    if mime_data.hasUrls():
+        # Return the first locally existing file
+        for url in mime_data.urls():
+            fpath = url.toLocalFile()
+            if os.path.exists(fpath):
+                return fpath.strip()
+    if mime_data.hasText():
+        txt = mime_data.text()
+        if txt.startswith('file://'):
+            return txt[7:].strip()
+    raise ValueError('Unsupported QMimeData for dropped file!')
+
 
 
 class ImageCanvas(QWidget):
@@ -161,18 +196,15 @@ class ImageCanvas(QWidget):
             QApplication.restoreOverrideCursor()
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasFormat('text/plain'):
-            txt = event.mimeData().text()
-            if txt.startswith('file://'):
-                event.accept()
-            else:
-                event.ignore()
+        if isDroppableMimeType(event.mimeData()):
+            event.accept()
         else:
             event.ignore()
 
     def dropEvent(self, event):
-        txt = event.mimeData().text()[7:]
-        self.filenameDropped.emit(txt.strip())
+        if isDroppableMimeType(event.mimeData()):
+            fpath = getDroppableFilename(event.mimeData())
+            self.filenameDropped.emit(fpath)
 
     def paintEvent(self, event):
         if not self._pixmap:
