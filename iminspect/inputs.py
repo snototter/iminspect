@@ -448,7 +448,7 @@ class RangeSliderSelectionWidget(InputWidget):
     def __init__(
             self, label, min_value=0, max_value=100,
             initial_lower_value=None, initial_upper_value=None,
-            value_format_fx=format_int,
+            value_format_fx=format_int, allow_text_input=False,
             min_label_width=None, parent=None):
         super(RangeSliderSelectionWidget, self).__init__(parent)
         layout = QHBoxLayout()
@@ -457,7 +457,13 @@ class RangeSliderSelectionWidget(InputWidget):
             lbl.setMinimumWidth(min_label_width)
         layout.addWidget(lbl)
 
-        self._lbl_lower = QLabel(' ', parent=self)
+        if allow_text_input:
+            self._lbl_lower = QLineEdit()
+            # self._lbl_lower.setMinimumWidth(50)
+            # self._lbl_lower.setMaximumWidth(50)
+            # self._lbl_lower.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        else:
+            self._lbl_lower = QLabel(' ', parent=self)
         self._lbl_lower.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         layout.addWidget(self._lbl_lower)
 
@@ -469,15 +475,76 @@ class RangeSliderSelectionWidget(InputWidget):
         self._slider.lowerValueChanged.connect(self.__slider_changed)
         self._slider.upperValueChanged.connect(self.__slider_changed)
         self._slider.rangeChanged.connect(lambda a, b: self.__slider_changed)
+        self._slider.setMinimumWidth(150)
         layout.addWidget(self._slider)
-
-        self._lbl_upper = QLabel(' ', parent=self)
+        
+        if allow_text_input:
+            self._lbl_upper = QLineEdit()
+            # self._lbl_upper.setMinimumWidth(50)
+            # self._lbl_upper.setMaximumWidth(50)
+        else:
+            self._lbl_upper = QLabel(' ', parent=self)
         layout.addWidget(self._lbl_upper)
         self.set_value_format_fx(value_format_fx)
 
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         self.__slider_changed()
+
+        if allow_text_input:
+            self._lbl_lower.textEdited.connect(self.__min_value_text_edited)
+            self._lbl_upper.textEdited.connect(self.__max_value_text_edited)
+            self._lbl_lower.editingFinished.connect(self.__set_from_text_box)
+            self._lbl_upper.editingFinished.connect(self.__set_from_text_box)
+    
+    @pyqtSlot()
+    def __set_from_text_box(self):
+        slider_value = self.get_input()
+        # Check if min is a valid number
+        try:
+            min_value = float(self._lbl_lower.text())
+        except:
+            min_value = slider_value[0]
+        # Check if max is a valid number
+        try:
+            max_value = float(self._lbl_upper.text())
+        except:
+            max_value = slider_value[1]
+        # Check if both are within the range
+        valid_range = self._slider.range()
+        min_value = max(valid_range[0], min(valid_range[1], min_value))
+        max_value = min(valid_range[1], max(valid_range[0], max_value))
+        if min_value > max_value:
+            self.set_value((max_value, min_value))
+        else:
+            self.set_value((min_value, max_value))
+        self.__slider_changed()
+
+    @pyqtSlot()
+    def __min_value_text_edited(self):
+        slider_value = self.get_input()
+        try:
+            min_value = float(self._lbl_lower.text())
+        except:
+            min_value = None
+        if min_value is None or min_value > slider_value[1] or min_value < self._slider.range()[0]:
+            print('Ignoring invalid input')
+            print(min_value)
+            print(self._slider.range())
+            return
+        self.set_value((min_value, slider_value[1]))
+    
+    @pyqtSlot()
+    def __max_value_text_edited(self):
+        slider_value = self.get_input()
+        try:
+            max_value = float(self._lbl_upper.text())
+        except:
+            max_value = None
+        if max_value is None or max_value < slider_value[0] or max_value > self._slider.range()[1]:
+            print('Ignoring invalid input')
+            return
+        self.set_value((slider_value[0], max_value))
 
     def set_value_format_fx(self, fx):
         self.__value_format_fx = fx
@@ -963,6 +1030,12 @@ class InputDemoApplication(QMainWindow):
         main_layout.addWidget(self._slider_range)
         main_layout.addWidget(HLine())
 
+        self._slider_range_textbox = RangeSliderSelectionWidget('Range slider w/ textbox:', 0, 100,
+            initial_lower_value=23, initial_upper_value=42, allow_text_input=True,
+            value_format_fx=lambda v: format_int(v, 4), min_label_width=150)
+        main_layout.addWidget(self._slider_range_textbox)
+        main_layout.addWidget(HLine())
+
         self._cb = CheckBoxWidget('Toggle me:', is_checked=True, min_label_width=150)
         main_layout.addWidget(self._cb)
         main_layout.addWidget(HLine())
@@ -986,6 +1059,7 @@ class InputDemoApplication(QMainWindow):
         self._slider.value_changed.connect(self._val_changed)
         self._sliderf.value_changed.connect(self._val_changed)
         self._slider_range.value_changed.connect(self._val_changed)
+        self._slider_range_textbox.value_changed.connect(self._val_changed)
         self._cb.value_changed.connect(self._val_changed)
         self._roi.value_changed.connect(self._val_changed)
 
@@ -1002,7 +1076,7 @@ class InputDemoApplication(QMainWindow):
         for w in [self._folder_widget, self._file_widget_open,
                 self._file_widget_save, self._ip_widget, self._size_widget,
                 self._dropdown, self._slider, self._sliderf, self._slider_range,
-                self._cb, self._roi]:
+                self._slider_range_textbox, self._cb, self._roi]:
             print('Input "{}"'.format(w.get_input()))
         print('\n')
 

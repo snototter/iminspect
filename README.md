@@ -100,6 +100,10 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
 
 
 ## Changelog
+* `1.3.10`
+  * Added utility scripts for [standalone installation](https://github.com/snototter/iminspect/blob/master/standalone/install-standalone-ubuntu-18.04.sh) (on Ubuntu).
+  * Clarified standalone usage example.
+  * Minor tweaks to the `inputs` subpackage.
 * `1.3.9`
   * Handle non-finite values: Info/caution message shows in the data summary label, non-finite values are ignored in computing the data statistics.
   * Option (Shortcut and toolbar button) to reload the currently inspected data with a different visualization/data type.

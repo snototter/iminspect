@@ -8,7 +8,9 @@
 #      widgets (what's the expected behavior if there are already multple widgets
 #      open for inspection?)
 #
-# * Add input boxes to range slider for manually typing the upper/lower limits
+# * Add input boxes to range slider for manually typing the upper/lower limits.
+#   This would require forwarding the editFinished signal to the inspector - because
+#   we convert the RangeSlider steps (e.g. 0..100) to the data range (e.g. -0.5..+0.5).
 #
 # * Usability Improvement:
 #   Thumbnail in "Open File"/"Reload Visualization" dialogs could be larger.
@@ -764,7 +766,7 @@ class InspectionWidget(QWidget):
 
         self._visualization_range_slider = inputs.RangeSliderSelectionWidget('Shown limits:',
             min_value=0, max_value=255,
-            value_format_fx=None)
+            value_format_fx=None, allow_text_input=False)
         self._visualization_range_slider.value_changed.connect(self.__updateDisplay)
         self._visualization_range_slider.value_changed.connect(lambda: self.showTooltipRequest.emit(self._inspector_id, None))
         self._visualization_range_slider.setToolTip('Adjust visualization limits')
