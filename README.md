@@ -3,9 +3,9 @@
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/iminspect.svg)](https://pypi.org/project/iminspect)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/snototter/iminspect/blob/master/LICENSE?raw=true)
 
-![Application logo](https://github.com/snototter/iminspect/blob/master/screenshots/logo.png?raw=true "Application logo")
-
 A python utility package for image/matrix visualization.
+
+![Application logo](https://github.com/snototter/iminspect/blob/master/screenshots/logo.png?raw=true "Application logo")
 
 Moving from MATLAB to python I was missing fast and easy-to-use inspection tools for image data.
 Thus, `iminspect` provides a collection of visualization/inspection capabilities along with a simplistic Qt-based GUI.
