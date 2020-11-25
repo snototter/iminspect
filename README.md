@@ -6,7 +6,7 @@
 A python utility package for image/matrix visualization.
 
 Moving from MATLAB to python I was missing fast and easy-to-use inspection tools for image data.
-Thus, `iminspect` provides a collection of visualization/inspection capabilities along with a Qt-based GUI.
+Thus, `iminspect` provides a collection of visualization/inspection capabilities along with a simplistic Qt-based GUI.
 The goal is to enable quick and easy visualization/analysis of:
 * color images,
 * monochrome images (i.e. any type of 2D matrices),
@@ -16,7 +16,7 @@ The goal is to enable quick and easy visualization/analysis of:
 * optical flow data.
 
 
-## Example usage:
+## Example usage (within a Python script):
 ```python
 from iminspect.inspector import inspect, DataType
 import numpy as np
@@ -42,6 +42,25 @@ Example: visualizing a mask image<br/>
 
 Example: visualizing RGB image and optical flow<br/>
 ![Screenshot optical flow](https://github.com/snototter/iminspect/blob/master/screenshots/rgb-flow.jpg?raw=true "iminspect GUI")
+
+
+## Example usage (standalone):
+The `iminspect` package can be run as a standalone application, so you could create a launcher, add it to your system's binary/executable path, etc.
+1. Set up a virtual environment (in this example, I'll use a separate `util-iminspect` folder to install the `iminspect` package):
+    ```bash
+    cd desired/installation/path
+    python3 -m venv util-iminspect
+    source util-iminspect/bin/activate
+    pip install -U pip
+    pip install iminspect
+    ```
+2. Run `iminspect` standalone via:
+    ```bash
+    desired/installation/path/util-iminspect/bin/python3 -m iminspect
+    ```
+3. Optionally, set up a launcher. Recommendations:
+  * Run in terminal
+  * Use icon ;-)
 
 ## Custom input widgets:
 The `iminspect.inputs` subpackage provides common user input widgets, e.g. to select a rectangular region-of-interest, enter an IP address, etc. See the `examples/inputs_demo.py` application on how to use it. Exemplary screenshot:<br/>
@@ -82,6 +101,7 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
 * Upcoming
   * Handle non-finite values: The data summary label shows a info/caution message and non-finite values are ignored in computing the data statistics.
   * Option to reload the currently inspected data with a different visualization/data type.
+  * Added application icon.
 * `1.3.8`
   * Added support for opening files via dropping them from external image viewer applications. Tested with common Linux viewers (`eog` and `geeqie`).
 * `1.3.7`
