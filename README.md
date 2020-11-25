@@ -3,6 +3,8 @@
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/iminspect.svg)](https://pypi.org/project/iminspect)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/snototter/iminspect/blob/master/LICENSE?raw=true)
 
+![Application logo](https://github.com/snototter/iminspect/blob/master/screenshots/logo.png?raw=true "Application logo")
+
 A python utility package for image/matrix visualization.
 
 Moving from MATLAB to python I was missing fast and easy-to-use inspection tools for image data.
@@ -46,6 +48,8 @@ Example: visualizing RGB image and optical flow<br/>
 
 ## Example usage (standalone):
 The `iminspect` package can be run as a standalone application, so you could create a launcher, add it to your system's binary/executable path, etc.
+You can either do this manually via the following steps or try the `standalone/install-...` scripts.
+
 1. Set up a virtual environment (in this example, I'll use a separate `util-iminspect` folder to install the `iminspect` package):
     ```bash
     cd desired/installation/path
@@ -57,17 +61,6 @@ The `iminspect` package can be run as a standalone application, so you could cre
 2. Run `iminspect` standalone via:
     ```bash
     desired/installation/path/util-iminspect/bin/python3 -m iminspect
-    ```
-3. Optionally, create a custom launcher based on this template (adjust paths accordingly):
-    ```
-    [Desktop Entry]
-    Name=iminspect
-    Comment=Image inspection utility
-    Exec=desired/installation/path/util-iminspect/bin/python3 -m iminspect
-    Type=Application
-    Terminal=true
-    Icon=desired/installation/path/util-iminspect/lib/python3.6/iminspect/iminspect_assets/iminspect.svg
-    Categories=Development;
     ```
 
 

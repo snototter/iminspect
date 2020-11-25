@@ -966,7 +966,6 @@ class Inspector(QMainWindow):
         self.setCentralWidget(self._main_widget)
         # Set icon
         self.setWindowIcon(QIcon(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'iminspect_assets', 'iminspect.svg')))
-        #convert iminspect-16.png iminspect-32.png iminspect-64.png iminspect-128.png iminspect-256.png -colors 256 iminspect.ico
         # Set up keyboard shortcuts
         self.__addShortcuts()
         # Add a zoom widget (scale original, fit window, ...) to the status bar

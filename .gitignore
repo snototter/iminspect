@@ -3,6 +3,7 @@
 *.autosave
 *.venv*
 **/.vscode/*
+standalone/iminspect_venv/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
