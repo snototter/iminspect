@@ -58,6 +58,17 @@ The `iminspect` package can be run as a standalone application, so you could cre
     ```bash
     desired/installation/path/util-iminspect/bin/python3 -m iminspect
     ```
+3. Optionally, create a custom launcher based on this template (adjust paths accordingly):
+    ```
+    [Desktop Entry]
+    Name=iminspect
+    Comment=Image inspection utility
+    Exec=desired/installation/path/util-iminspect/bin/python3 -m iminspect
+    Type=Application
+    Terminal=true
+    Icon=desired/installation/path/util-iminspect/lib/python3.6/iminspect/iminspect_assets/iminspect.svg
+    Categories=Development;
+    ```
 
 
 ## Custom input widgets:

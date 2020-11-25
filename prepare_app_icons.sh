@@ -6,13 +6,13 @@ echo "Exporting SVG to PNG"
 highdpi_file=iminspect-300dpi.png
 inkscape --export-png=${highdpi_file} --export-area-page --export-dpi=300 iminspect.svg
 
-for res in 16 24 32 48 64 72 96 128 256
+for res in 16 24 32 48 64 72 96 128 256 512
 do
   echo "Rendering icon size $res"
   convert ${highdpi_file} -resize ${res}x${res} iminspect-${res}.png
-  cp iminspect-${res}.png ~/.local/share/icons/hicolor/${res}x${res}/apps/iminspect.png
+#  cp iminspect-${res}.png ~/.local/share/icons/hicolor/${res}x${res}/apps/iminspect.png
 done
-rm *.png
+#rm *.png
 
 cd ../..
 
