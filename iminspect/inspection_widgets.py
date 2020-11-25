@@ -425,6 +425,85 @@ class SaveInspectionFileDialog(QDialog):
         return None
 
 
+class ChangeDataTypeDialog(QDialog):
+    def __init__(self, data_type, thumbnail, parent=None):
+        """
+        Dialog to reload/change the data type of the currently loaded data.
+
+        data_type:  None or inspector.DataType of the currently loaded data.
+        thumbnail:  None or QPixmap of the currently displayed data.
+        """
+        super(ChangeDataTypeDialog, self).__init__(parent)
+        self._data_type = data_type
+        self._confirmed = False
+        self.__prepareLayout(data_type, thumbnail)
+
+    def __prepareLayout(self, current_data_type, current_thumbnail):
+        self.setWindowTitle('Reload / Change Data Type')
+        layout = QVBoxLayout()
+        
+        self._type_widget = inputs.DropDownSelectionWidget('Type:',
+            [(inspector.DataType.COLOR, 'Color'),
+            (inspector.DataType.MONOCHROME, 'Monochrome'),
+            (inspector.DataType.BOOL, 'Boolean Mask'),
+            (inspector.DataType.CATEGORICAL, 'Categories / Labels'),
+            (inspector.DataType.DEPTH, 'Depth'),
+            (inspector.DataType.FLOW, 'Optical Flow'),
+            (inspector.DataType.MULTICHANNEL, 'Multi-channel')])
+        layout.addWidget(self._type_widget)
+
+        btn_layout = QHBoxLayout()
+        btn_cancel = QPushButton('Cancel')
+        btn_cancel.clicked.connect(self.__onCancel)
+        btn_layout.addWidget(btn_cancel)
+
+        self._btn_confirm = QPushButton('Reload Data')
+        self._btn_confirm.clicked.connect(self.__onConfirm)
+        btn_layout.addWidget(self._btn_confirm)
+
+        layout.addLayout(btn_layout)
+
+        if current_thumbnail is None:
+            self.setLayout(layout)
+        else:
+            # Show thumbnail left of input widgets, so the user knows which
+            # viewer he is going to load the file into.
+            thumb_layout = QVBoxLayout()
+            thumb_layout.addWidget(QLabel('Currently shown:'))
+            thumb_layout.addWidget(imgview.ImageLabel(current_thumbnail))
+            hlayout = QHBoxLayout()
+            hlayout.addLayout(thumb_layout)
+            hlayout.addWidget(inputs.VLine())
+            hlayout.addLayout(layout)
+            self.setLayout(hlayout)
+
+        # Pre-set data type
+        if current_data_type is not None:
+            self._type_widget.set_value(current_data_type)
+
+    def open(self):
+        super(ChangeDataTypeDialog, self).open()
+
+    @pyqtSlot()
+    def __onCancel(self):
+        self.reject()
+
+    @pyqtSlot()
+    def __onConfirm(self):
+        type_tuple = self._type_widget.get_input()
+        if type_tuple is None:
+            self._data_type = None
+        else:
+            self._data_type = type_tuple[0]
+        self._confirmed = True
+        self.accept()
+
+    def getSelection(self):
+        if self._confirmed:
+            return self._data_type
+        return None
+
+
 class ToolbarFileIOWidget(QWidget):
     """
     Provides buttons to issue open/save file requests.

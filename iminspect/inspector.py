@@ -8,11 +8,10 @@
 #      widgets (what's the expected behavior if there are already multple widgets
 #      open for inspection?)
 #
-# * Handle infinite and NaN values
-#   => Extend the data overview/summary label: "Contains special values: NaN, Inf" 
-#      (list only those that are actually present)
-#
 # * Add input boxes to range slider for manually typing the upper/lower limits
+#
+# * Usability Improvement:
+#   Thumbnail in "Open File"/"Reload Visualization" dialogs could be larger.
 #
 # * GUI issue:
 #   Initial window resize won't scale to the exact specified size.
@@ -254,6 +253,7 @@ class InspectionWidget(QWidget):
         # Handles to file I/O dialogs
         self._save_file_dialog = None
         self._open_file_dialog = None
+        self._reload_visualization_dialog = None
         # Now, show the given data:
         self.inspectData(data, data_type, display_settings, categorical_labels)
 
@@ -533,7 +533,41 @@ class InspectionWidget(QWidget):
 
     @pyqtSlot()
     def showVisualizationChangeDialog(self):
-        print('TODO show custom dialog! (thumbnail + data type selection)')  #FIXME
+        self._reload_visualization_dialog = inspection_widgets.ChangeDataTypeDialog(
+            self._data_type, self._img_viewer.imagePixmap(), parent=self)
+        self._reload_visualization_dialog.finished.connect(self.__onReloadDialogFinished)
+        self._reload_visualization_dialog.open()
+
+    @pyqtSlot()
+    def __onReloadDialogFinished(self):
+        new_data_type = self._reload_visualization_dialog.getSelection()
+        if new_data_type is None:
+            return
+        if new_data_type == self._data_type:
+            print('The same data type has been selected. Reload request will be ignored.')
+            return
+        try:
+            reload_data = self._data
+            if self._data_type == DataType.BOOL:
+                if new_data_type in [DataType.COLOR, DataType.MONOCHROME]:
+                    reload_data = self._data.astype(np.uint8)
+                elif new_data_type == DataType.CATEGORICAL:
+                    reload_data = self._data.astype(np.int32)
+                elif new_data_type in [DataType.FLOW, DataType.DEPTH, DataType.MULTICHANNEL]:
+                    reload_data = self._data.astype(np.float32)
+                else:
+                    raise NotImplementedError("Reloading Boolean as '{}' is not yet supported.".format(new_data_type.toStr()))
+            self.inspectData(reload_data, new_data_type)
+            # Notify observers of loaded data
+            self.fileOpened.emit(self._inspector_id)
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText('Error reloading data as type "{:s}"'.format(
+                DataType.toStr(new_data_type)))
+            msg.setInformativeText('Logged exception:\n{:s}'.format(str(e)))
+            msg.setWindowTitle('Error')
+            msg.exec()
 
     def __prepareDataStatistics(self):
         """
