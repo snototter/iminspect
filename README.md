@@ -58,9 +58,7 @@ The `iminspect` package can be run as a standalone application, so you could cre
     ```bash
     desired/installation/path/util-iminspect/bin/python3 -m iminspect
     ```
-3. Optionally, set up a launcher. Recommendations:
-  * Run in terminal
-  * Use icon ;-)
+
 
 ## Custom input widgets:
 The `iminspect.inputs` subpackage provides common user input widgets, e.g. to select a rectangular region-of-interest, enter an IP address, etc. See the `examples/inputs_demo.py` application on how to use it. Exemplary screenshot:<br/>
@@ -98,9 +96,9 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
 
 
 ## Changelog
-* Upcoming
-  * Handle non-finite values: The data summary label shows a info/caution message and non-finite values are ignored in computing the data statistics.
-  * Option to reload the currently inspected data with a different visualization/data type.
+* `1.3.9`
+  * Handle non-finite values: Info/caution message shows in the data summary label, non-finite values are ignored in computing the data statistics.
+  * Option (Shortcut and toolbar button) to reload the currently inspected data with a different visualization/data type.
   * Added application icon.
 * `1.3.8`
   * Added support for opening files via dropping them from external image viewer applications. Tested with common Linux viewers (`eog` and `geeqie`).

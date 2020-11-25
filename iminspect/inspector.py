@@ -965,9 +965,8 @@ class Inspector(QMainWindow):
         self._main_widget = QWidget()
         self.setCentralWidget(self._main_widget)
         # Set icon
-        self.setWindowIcon(QIcon(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'iminspect_assets', 'iminspect.svg'))) #TODO set path, check if data is deployed:
-        # https://stackoverflow.com/questions/501597/how-to-distribute-desktop-files-and-icons-for-a-python-package-in-gnome-with
-        # https://www.reddit.com/r/Python/comments/1o4sda/best_way_to_distribute_media_assets_for_a_python/
+        self.setWindowIcon(QIcon(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'iminspect_assets', 'iminspect.svg')))
+        #convert iminspect-16.png iminspect-32.png iminspect-64.png iminspect-128.png iminspect-256.png -colors 256 iminspect.ico
         # Set up keyboard shortcuts
         self.__addShortcuts()
         # Add a zoom widget (scale original, fit window, ...) to the status bar
