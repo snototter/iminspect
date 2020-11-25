@@ -538,16 +538,41 @@ class InspectionWidget(QWidget):
         Additionally, information will be printed to stdout and shown on
         the GUI.
         """
-        self._data_limits = [np.min(self._data[:]), np.max(self._data[:])]
+        contains_nan = np.any(np.isnan(self._data))
+        contains_inf = np.any(np.isinf(self._data))
+        if contains_nan or contains_inf:
+            # Prepare output string
+            nonfin_str = ''
+            if contains_inf:
+                nonfin_str += 'Inf'
+            if contains_nan:
+                if len(nonfin_str) > 0:
+                    nonfin_str += ', '
+                nonfin_str += 'NaN'
+            # Compute limits on finite data only
+            finite_data = self._data[np.isfinite(self._data)]
+        else:
+            finite_data = self._data
+        self._data_limits = [np.min(finite_data[:]), np.max(finite_data[:])]
+        # self._data_limits = [np.min(self._data[:]), np.max(self._data[:])]
 
+        # Prepare 'header' for stdout summary
         stdout_str = list()
         stdout_str.append('##################################################')
         stdout_str.append('Data inspection widget [{:d}]:\n'.format(self._inspector_id))
+        if contains_inf or contains_nan:
+            stdout_str.append('!! Data contains non-finite values: {}'.format(nonfin_str))
+            stdout_str.append('   These values will be ignored for the following statistics !!\n')
         stdout_str.append('Data type: {} ({})'.format(
             self._data.dtype, DataType.toStr(self._data_type)))
         stdout_str.append('Shape:     {}\n'.format(self._data.shape))
 
+        # Prepare label for GUI summary
         lbl_txt = '<table cellpadding="5">'
+        if contains_inf or contains_nan:
+            lbl_txt += '<tr><td colspan="2"><font color="red"><b>Contains non-finite values: {:s}</b></font></td></tr>'.format(
+                nonfin_str)
+            lbl_txt += '<tr><td colspan="2">Non-finite values are ignored for these statistics!</td></tr>'
         lbl_txt += '<tr><td><b>Type:</b> {} ({})</td><td><b>Shape:</b> {}</td></tr>'.format(
             self._data.dtype, DataType.toStr(self._data_type), self._data.shape)
 
@@ -602,8 +627,10 @@ class InspectionWidget(QWidget):
                 lbl_txt += '<tr><td colspan="2"><b>Label image, {:d}/{:d} classes.</b></td></tr>'.format(
                     num_present_categories, len(self._data_categories))
         else:
-            global_mean = np.mean(self._data[:])
-            global_std = np.std(self._data[:])
+            # global_mean = np.mean(self._data[:])
+            # global_std = np.std(self._data[:])
+            global_mean = np.mean(finite_data[:])
+            global_std = np.std(finite_data[:])
             self._visualization_range_slider.set_range(0, 255)
 
             stdout_str.append('Minimum: {}'.format(self._data_limits[0]))
@@ -618,11 +645,20 @@ class InspectionWidget(QWidget):
 
             if not self._is_single_channel:
                 for c in range(self._data.shape[2]):
-                    cmin = np.min(self._data[:, :, c])
-                    cmax = np.max(self._data[:, :, c])
-                    cmean = np.mean(self._data[:, :, c])
-                    cstd = np.std(self._data[:, :, c])
+                    layer_data = self._data[:, :, c]
+                    is_finite = np.isfinite(layer_data)
+                    finite_layer_data = layer_data[is_finite]
+                    # cmin = np.min(self._data[:, :, c])
+                    # cmax = np.max(self._data[:, :, c])
+                    # cmean = np.mean(self._data[:, :, c])
+                    # cstd = np.std(self._data[:, :, c])
+                    cmin = np.min(finite_layer_data)
+                    cmax = np.max(finite_layer_data)
+                    cmean = np.mean(finite_layer_data)
+                    cstd = np.std(finite_layer_data)
 
+                    if not np.all(is_finite):
+                        stdout_str.append('!! Channel {} contains non-finite values !!'.format(c))
                     stdout_str.append('Minimum on channel {}: {}'.format(c, cmin))
                     stdout_str.append('Maximum on channel {}: {}'.format(c, cmax))
                     stdout_str.append('Mean on channel {}:    {} +/- {}\n'.format(c, cmean, cstd))
@@ -1026,6 +1062,9 @@ class Inspector(QMainWindow):
         # Save file
         shortcut_save = QShortcut(QKeySequence('Ctrl+S'), self)
         shortcut_save.activated.connect(self.__onSaveShortcut)
+        # Reload/change visualization
+        shortcut_reload = QShortcut(QKeySequence('Ctrl+R'), self)
+        shortcut_reload.activated.connect(self.__onReloadShortcut)
         # Close window
         shortcut_exit_q = QShortcut(QKeySequence('Ctrl+Q'), self)
         shortcut_exit_q.activated.connect(QApplication.instance().quit)
@@ -1191,6 +1230,11 @@ class Inspector(QMainWindow):
     def __onSaveShortcut(self):
         inspector_id = self.__getActiveInspector()
         self._inspectors[inspector_id].showFileSaveDialog()
+    
+    @pyqtSlot()
+    def __onReloadShortcut(self):
+        inspector_id = self.__getActiveInspector()
+        print('TODO reload visualization!!! for inspector:', inspector_id)
 
 
 def inspect(

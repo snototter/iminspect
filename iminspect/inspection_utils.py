@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 import os
+import math
 import qimage2ndarray
 
 # from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
@@ -32,6 +33,8 @@ def fmt1f(v):
 
 
 def fmti(v):
+    if not math.isfinite(v):
+        return '?'  #TODO
     return '{:d}'.format(int(v))
 
 
@@ -101,9 +104,14 @@ def emptyInspectionImage():
     font.setBold(True)
     font.setFamily('Helvetica')
     qp.setFont(font)
-    qp.drawText(qimage.rect(), Qt.AlignCenter, "No data given!")
+    qp.drawText(qimage.rect(), Qt.AlignCenter, "No data selected for inspection!")
     qp.end()
     return qimage2ndarray.rgb_view(qimage)
+    # import numpy as np
+    # npi = qimage2ndarray.rgb_view(qimage).astype(np.float32)
+    # npi[0,0,0] = np.Inf
+    # npi[10, 100, 2] = np.NaN
+    # return npi
 
 class FilenameUtils(object):
     @staticmethod

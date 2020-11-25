@@ -431,6 +431,7 @@ class ToolbarFileIOWidget(QWidget):
     """
     fileOpenRequest = pyqtSignal()
     fileSaveRequest = pyqtSignal()
+    visualizationChangeRequest = pyqtSignal()
 
     def __init__(self, vertical=False, icon_size=QSize(20, 20), parent=None):
         """
@@ -463,10 +464,21 @@ class ToolbarFileIOWidget(QWidget):
         btn.setToolTip('Save as... (Ctrl+S)')
         btn.clicked.connect(self.fileSaveRequest)
         layout.addWidget(btn)
+        
+        # Add "Change visualization" button
+        btn = QToolButton()
+        btn.setIcon(QIcon.fromTheme('view-refresh'))
+        btn.setIconSize(icon_size)
+        btn.setToolTip('Reload/Change visualization (Ctrl+R)')
+        btn.clicked.connect(self.visualizationChangeRequest)
+        layout.addWidget(btn)
+
+        # Align toolbar
         if vertical:
             layout.setAlignment(Qt.AlignTop)
         else:
             layout.setAlignment(Qt.AlignRight)
+
         # Important to avoid unnecessary widget margins:
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
