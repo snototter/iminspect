@@ -75,9 +75,13 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
   * `Ctrl+O` shows a dialog to open another file.
   * `Ctrl+S` shows a dialog to save either the (raw) input or its current visualization.
   * `Ctrl+T` toggle tool tip display when moving the mouse over the data.
+  * `Ctrl+R` reloads the current data such that the user can select a different visualization/data type.
 
 
 ## Changelog
+* Upcoming
+  * Handle non-finite values: The data summary label shows a info/caution message and non-finite values are ignored in computing the data statistics.
+  * Option to reload the currently inspected data with a different visualization/data type.
 * `1.3.8`
   * Added support for opening files via dropping them from external image viewer applications. Tested with common Linux viewers (`eog` and `geeqie`).
 * `1.3.7`

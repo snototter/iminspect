@@ -531,6 +531,10 @@ class InspectionWidget(QWidget):
             msg.setWindowTitle('Error')
             msg.exec()
 
+    @pyqtSlot()
+    def showVisualizationChangeDialog(self):
+        print('TODO show custom dialog! (thumbnail + data type selection)')  #FIXME
+
     def __prepareDataStatistics(self):
         """
         Analyzes the internal _data field (range, data type, channels,
@@ -682,6 +686,7 @@ class InspectionWidget(QWidget):
             vertical=True, icon_size=QSize(24, 24))
         file_io_widget.fileSaveRequest.connect(self.showFileSaveDialog)
         file_io_widget.fileOpenRequest.connect(self.showFileOpenDialog)
+        file_io_widget.visualizationChangeRequest.connect(self.showVisualizationChangeDialog)
 
         input_layout = QVBoxLayout()
         # Let user select a single channel if multi-channel input is provided
@@ -1234,7 +1239,7 @@ class Inspector(QMainWindow):
     @pyqtSlot()
     def __onReloadShortcut(self):
         inspector_id = self.__getActiveInspector()
-        print('TODO reload visualization!!! for inspector:', inspector_id)
+        self._inspectors[inspector_id].showVisualizationChangeDialog()
 
 
 def inspect(
