@@ -1,6 +1,10 @@
 name: Publish Python Package
 
+# Prefer manual publishing due to the infrequent updates to this package
 on: workflow_dispatch
+#on:
+#  release:
+#    types: [created]
   
 jobs:
   build:
