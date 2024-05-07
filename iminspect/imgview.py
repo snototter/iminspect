@@ -498,6 +498,9 @@ class ImageViewer(QScrollArea):
     @pyqtSlot(int, int)
     def scrollAbsolute(self, value, orientation, notify_linked=True):
         """Sets the scrollbar to the given value."""
+        # Cast to int to prevent TypeError encountered in qt versions available
+        # with Ubuntu 22.04 and 24.04
+        value = int(value)
         bar = self._scoll_bars[orientation]
         if value < bar.minimum():
             value = bar.minimum()
