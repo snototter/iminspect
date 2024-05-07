@@ -45,5 +45,5 @@ setuptools.setup(
     ],
     package_dir={'iminspect': 'iminspect'},
     package_data={'iminspect': ['iminspect_assets/*.svg']},
-    python_requires='>=3.5',
+    python_requires='>=3.6',
 )
