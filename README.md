@@ -18,6 +18,29 @@ The goal is to enable quick and easy visualization/analysis of:
 * optical flow data.
 
 
+## Qt Backend
+`iminspect` requires a [Qt](https://www.qt.io/) backend. In Python, you need to
+either install [PyQt](https://www.riverbankcomputing.com/software/pyqt/download)
+or [PySide](https://doc.qt.io/qtforpython-6/).  
+The default installation **will not install** any of these backends, you have
+to select one on your own.
+
+Optionally, you can install `iminspect` with a specific backend. Currently,
+`pyqt5`, `pyqt6`, `pyside2`, and `pyside6` are supported:
+```bash
+# PyQt5
+python3 -m pip install "iminspect[pyqt5]"
+
+# OR PyQt6
+python3 -m pip install "iminspect[pyqt6]"
+
+# OR PySide2
+python3 -m pip install "iminspect[pyside2]"
+
+# OR PySide6
+python3 -m pip install "iminspect[pyside6]"
+```
+
 ## Example usage (within a Python script):
 ```python
 from iminspect.inspector import inspect, DataType
@@ -67,13 +90,6 @@ You can either do this manually via the following steps or try the `standalone/i
 ## Custom input widgets:
 The `iminspect.inputs` subpackage provides common user input widgets, e.g. to select a rectangular region-of-interest, enter an IP address, etc. See the `examples/inputs_demo.py` application on how to use it. Exemplary screenshot:<br/>
 ![Screenshot inputs demo](https://github.com/snototter/iminspect/blob/master/screenshots/input-widgets.jpg?raw=true "Common input widgets")
-
-
-## Dependencies
-* `numpy`, for matrix manipulation
-* `PyQt5`, for the graphical user interface - if there's a `PyQt5`-related install error, you need to upgrade `pip` via `pip install --upgrade pip`.
-* `qimage2ndarray`, to convert numpy ndarrays to Qt images
-* `vito`, a lightweight vision tool package
 
 
 ## UI Documentation
