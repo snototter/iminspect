@@ -4,8 +4,9 @@ import os
 import math
 import qimage2ndarray
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QPainter, QFont, QColor, QPixmap, QImage, QPen
+from qtpy.QtGui import QPainter, QFont, QColor, QPixmap, QImage, QPen, QIcon
 from typing import Tuple
+from pathlib import Path
 
 
 # Utils to format a data point (depending on the range)
@@ -94,9 +95,12 @@ def emptyInspectionImage(img_size: Tuple[int, int] = (640, 320)):
     qp = QPainter()
     qp.begin(qimage)
     qp.setRenderHint(QPainter.HighQualityAntialiasing)
+    sz = min(100, min(img_width, img_height))
+    logo = QIcon(str(Path(__file__).absolute().parent / 'iminspect_assets' / 'iminspect.svg')).pixmap(sz, sz)
+    qp.drawPixmap((img_width - sz) // 2, 20, logo)
     qp.setPen(QPen(QColor(200, 0, 0)))
     font = QFont()
-    font.setPointSize(20)
+    font.setPointSize(24)
     font.setBold(True)
     font.setFamily('Helvetica')
     qp.setFont(font)

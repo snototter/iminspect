@@ -42,13 +42,15 @@ pyqt6 = ["PyQt6"]
 pyside2 = ["PySide2"]
 pyside6 = ["PySide6"]
 
-#package_data={'iminspect': ['iminspect_assets/*.svg']},
-
 [tool.setuptools]
 packages = ["iminspect"]
+include-package-data = true
+
+#[tool.setuptools.packages.find]
+#where = ["iminspect"]
 
 [tool.setuptools.dynamic]
 version = {attr = "iminspect.__version__"}
 
-[tool.setuptools.package-data]
-iminspect = ["iminspect_assets/*.txt"]
+#[tool.setuptools.package-data]
+#iminspect = ["iminspect_assets/*.txt"]

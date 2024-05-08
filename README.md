@@ -116,6 +116,17 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
 
 
 ## Changelog
+* `1.4.1`
+  * Adds the missing asset.
+* `1.4.0`
+  * Updates the build process, switching to [pyproject.toml](https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/)
+  * Users can choose which Qt/PySide version should be used via the package extras.
+* `1.3.11`
+  * Prevents a `TypeError` that occurs for some mouse wheel zoom actions on recent OS/Qt versions.
+  * Github workflow updates
+  * Remove Python EOL versions
+  * Fix OS & Python setup for CI test runner
+  * Update PyPI action to use [Trusted Publishing](https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/) / [OpenID Connect (OIDC)](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-pypi)
 * `1.3.10`
   * Added utility scripts for [standalone installation](https://github.com/snototter/iminspect/blob/master/standalone/install-standalone-ubuntu-18.04.sh) (on Ubuntu).
   * Clarified standalone usage example.
