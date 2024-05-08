@@ -111,7 +111,7 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
   * `Ctrl+Q` and `Ctrl+W` close the inspection GUI.
   * `Ctrl+O` shows a dialog to open another file.
   * `Ctrl+S` shows a dialog to save either the (raw) input or its current visualization.
-  * `Ctrl+T` toggle tool tip display when moving the mouse over the data.
+  * `Ctrl+T` toggles tool tip display when moving the mouse over the data.
   * `Ctrl+R` reloads the current data such that the user can select a different visualization/data type.
 
 
