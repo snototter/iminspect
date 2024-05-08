@@ -5,7 +5,7 @@ Python Qt5 utils to easily visualize image data for faster development.
 """
 
 
-__version__ = '1.3.11'
+__version__ = '1.4.0'
 
 
 __all__ = ['imgview', 'inputs', 'inspection_utils', 'inspection_widgets', 'inspector']
