@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Inspect matrix/image data"""
-from typing import Optional, Tuple, Union
+from typing import Tuple, Union
 
 # TODO Ideas and potential usability improvements:
 # * Load multiple files via drag & drop from file browser/external image viewer

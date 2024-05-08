@@ -83,7 +83,8 @@ class ImageCanvas(QWidget):
     """Widget to display a zoomable/scrollable image."""
     # User wants to zoom in/out by amount (mouse wheel delta)
     zoomRequest = Signal(int)
-    # User wants to scroll (Qt.Horizontal or Qt.Vertical, mouse wheel delta)
+    # User wants to scroll (mouse wheel delta, ORIENTATION_HORIZONTAL or
+    # ORIENTATION_VERTICAL).
     scrollRequest = Signal(int, int)
     # Mouse moved to this pixel position
     mouseMoved = Signal(QPointF)
@@ -93,6 +94,11 @@ class ImageCanvas(QWidget):
     imgScaleChanged = Signal(float)
     # File has been dropped onto canvas
     filenameDropped = Signal(str)
+
+    # Qt5/6 compatibility - can't use the Qt.Orientation flag as dictionary
+    # keys in Qt6, and Qt5 doesn't provide the ".value" attribute.
+    ORIENTATION_HORIZONTAL = 1
+    ORIENTATION_VERTICAL = 2
 
     def __init__(
             self, parent=None, rect_selectable=False,
@@ -164,8 +170,8 @@ class ImageCanvas(QWidget):
         # The magic scale factor ensures that dragging is a bit more subtle
         # than scrolling with the mouse wheel. On my system, a factor of 6
         # means that the dragged image follows exactly the mouse pointer...
-        dx and self.scrollRequest.emit(dx * 6, Qt.Horizontal)
-        dy and self.scrollRequest.emit(dy * 6, Qt.Vertical)
+        dx and self.scrollRequest.emit(dx * 6, ImageCanvas.ORIENTATION_HORIZONTAL)
+        dy and self.scrollRequest.emit(dy * 6, ImageCanvas.ORIENTATION_VERTICAL)
 
     def mousePressEvent(self, event):
         if Qt.LeftButton == event.button():
@@ -327,8 +333,8 @@ class ImageCanvas(QWidget):
             if modifiers & Qt.ShiftModifier:
                 dx *= 10
                 dy *= 10
-            dx and self.scrollRequest.emit(dx, Qt.Horizontal)
-            dy and self.scrollRequest.emit(dy, Qt.Vertical)
+            dx and self.scrollRequest.emit(dx, ImageCanvas.ORIENTATION_HORIZONTAL)
+            dy and self.scrollRequest.emit(dy, ImageCanvas.ORIENTATION_VERTICAL)
         event.accept()
 
 
@@ -399,17 +405,17 @@ class ImageViewer(QScrollArea):
 
         self.setWidget(self._canvas)
         self.setWidgetResizable(True)
-        self._scoll_bars = {
-            Qt.Vertical: self.verticalScrollBar(),
-            Qt.Horizontal: self.horizontalScrollBar()
+        self._scroll_bars = {
+            ImageCanvas.ORIENTATION_HORIZONTAL: self.horizontalScrollBar(),
+            ImageCanvas.ORIENTATION_VERTICAL: self.verticalScrollBar()
         }
         # Observe the valueChanged signal so we know whether the user dragged
         # a scroll bar or used the keyboard (e.g. arrow keys) to adjust the
         # bar's position.
         self.verticalScrollBar().valueChanged.connect(
-            lambda new_value: self.scrollAbsolute(new_value, Qt.Vertical, notify_linked=True))
+            lambda new_value: self.scrollAbsolute(new_value, ImageCanvas.ORIENTATION_VERTICAL, notify_linked=True))
         self.horizontalScrollBar().valueChanged.connect(
-            lambda new_value: self.scrollAbsolute(new_value, Qt.Horizontal, notify_linked=True))
+            lambda new_value: self.scrollAbsolute(new_value, ImageCanvas.ORIENTATION_HORIZONTAL, notify_linked=True))
 
     def currentDisplaySettings(self):
         """Query the current zoom/scroll settings, so you can restore them.
@@ -417,8 +423,8 @@ class ImageViewer(QScrollArea):
         image.
         """
         settings = {'zoom': self._img_scale}
-        for orientation in [Qt.Horizontal, Qt.Vertical]:
-            bar = self._scoll_bars[orientation]
+        for orientation in [ImageCanvas.ORIENTATION_HORIZONTAL, ImageCanvas.ORIENTATION_VERTICAL]:
+            bar = self._scroll_bars[orientation]
             settings[orientation] = (bar.minimum(), bar.value(), bar.maximum())
         return settings
 
@@ -429,8 +435,8 @@ class ImageViewer(QScrollArea):
         # widget. Then, setting their value won't work. Best and least
         # complicated way I found so far: force Qt to process the event loop
         # after adjusting the bar's range (and before setting the new value).
-        for orientation in [Qt.Horizontal, Qt.Vertical]:
-            bar = self._scoll_bars[orientation]
+        for orientation in [ImageCanvas.ORIENTATION_HORIZONTAL, ImageCanvas.ORIENTATION_VERTICAL]:
+            bar = self._scroll_bars[orientation]
             bmin, bval, bmax = settings[orientation]
             if bval != 0:
                 bar.setMinimum(bmin)
@@ -482,26 +488,30 @@ class ImageViewer(QScrollArea):
                 - self._canvas.pixelToWidgetPos(px_pos_prev)
             self.scrollRelative(
                 delta_widget.x()*120/self.horizontalScrollBar().singleStep(),
-                Qt.Horizontal, notify_linked=True)
+                ImageCanvas.ORIENTATION_HORIZONTAL, notify_linked=True)
             self.scrollRelative(
                 delta_widget.y()*120/self.verticalScrollBar().singleStep(),
-                Qt.Vertical, notify_linked=True)
+                ImageCanvas.ORIENTATION_VERTICAL, notify_linked=True)
 
     @Slot(int, int)
     def scrollRelative(self, delta, orientation, notify_linked=True):
         """Slot for scrollRequest signal of image canvas."""
+        if orientation not in self._scroll_bars:
+            return
         steps = -delta / 120
-        bar = self._scoll_bars[orientation]
+        bar = self._scroll_bars[orientation]
         value = bar.value() + bar.singleStep() * steps
         self.scrollAbsolute(value, orientation, notify_linked=notify_linked)
 
     @Slot(int, int)
     def scrollAbsolute(self, value, orientation, notify_linked=True):
         """Sets the scrollbar to the given value."""
+        if orientation not in self._scroll_bars:
+            return
         # Cast to int to prevent TypeError encountered in qt versions available
         # with Ubuntu 22.04 and 24.04
         value = int(value)
-        bar = self._scoll_bars[orientation]
+        bar = self._scroll_bars[orientation]
         if value < bar.minimum():
             value = bar.minimum()
         if value > bar.maximum():
