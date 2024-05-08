@@ -1,5 +1,1 @@
-numpy
-Pillow
-PyQt5
-qimage2ndarray
-vito>=1.1.4
+.

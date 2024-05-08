@@ -14,12 +14,12 @@ for all the Qt standard widgets).
 import os
 import sys
 from enum import Enum
-from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
+from qtpy.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QFrame, \
     QSlider, QCheckBox, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
     QColorDialog
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QSize, QRegExp, QEvent, QRect, QRectF, QFileInfo
-from PyQt5.QtGui import QRegExpValidator, QFontDatabase, QColor, QBrush, QPen, QPainter
+from qtpy.QtCore import Signal, Slot, Qt, QSize, QRegExp, QEvent, QRect, QRectF, QFileInfo
+from qtpy.QtGui import QRegExpValidator, QFontDatabase, QColor, QBrush, QPen, QPainter
 from vito import imutils
 
 from . import imgview
@@ -65,7 +65,7 @@ class VLine(QFrame):
 
 class InputWidget(QWidget):
     """Base class which defines the value-changed signal to be emitted."""
-    value_changed = pyqtSignal(object)
+    value_changed = Signal(object)
 
     def __init__(self, parent=None):
         super(InputWidget, self).__init__(parent)
@@ -115,7 +115,7 @@ class ColorIndicator(QWidget):
     H = widget.height() - 2*padding.
     If width_factor is negative, W = widget.width() - 2*padding.
     """
-    clicked = pyqtSignal()
+    clicked = Signal()
 
     def __init__(self, padding=0, width_factor=4, parent=None):
         super(ColorIndicator, self).__init__(parent)
@@ -183,7 +183,7 @@ class ColorPickerWidget(InputWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
-    @pyqtSlot()
+    @Slot()
     def __choose(self):
         opt = QColorDialog.DontUseNativeDialog
         if self._with_alpha:
@@ -226,11 +226,11 @@ class RangeSlider(QWidget):
     HANDLE_SIDE_LENGTH = 13
 
     # Min/max has changed:
-    rangeChanged = pyqtSignal(int, int)
+    rangeChanged = Signal(int, int)
     # Lower/left value has changed
-    lowerValueChanged = pyqtSignal(int)
+    lowerValueChanged = Signal(int)
     # Upper/right value has changed
-    upperValueChanged = pyqtSignal(int)
+    upperValueChanged = Signal(int)
 
     def __init__(self, min_value=0, max_value=100,
             parent=None):
@@ -497,7 +497,7 @@ class RangeSliderSelectionWidget(InputWidget):
             self._lbl_lower.editingFinished.connect(self.__set_from_text_box)
             self._lbl_upper.editingFinished.connect(self.__set_from_text_box)
     
-    @pyqtSlot()
+    @Slot()
     def __set_from_text_box(self):
         slider_value = self.get_input()
         # Check if min is a valid number
@@ -520,7 +520,7 @@ class RangeSliderSelectionWidget(InputWidget):
             self.set_value((min_value, max_value))
         self.__slider_changed()
 
-    @pyqtSlot()
+    @Slot()
     def __min_value_text_edited(self):
         slider_value = self.get_input()
         try:
@@ -534,7 +534,7 @@ class RangeSliderSelectionWidget(InputWidget):
             return
         self.set_value((min_value, slider_value[1]))
     
-    @pyqtSlot()
+    @Slot()
     def __max_value_text_edited(self):
         slider_value = self.get_input()
         try:

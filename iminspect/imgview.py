@@ -6,10 +6,10 @@ A Qt-based image viewer which supports zooming and scrolling.
 
 import os
 from enum import Enum
-from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QScrollArea,\
+from qtpy.QtWidgets import QMainWindow, QApplication, QWidget, QScrollArea,\
     QHBoxLayout, QVBoxLayout, QDialog
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QSize, QPointF, QPoint, QRect
-from PyQt5.QtGui import QPainter, QPixmap, QCursor, QBrush, QColor, QPen, QPalette
+from qtpy.QtCore import Signal, Slot, Qt, QSize, QPointF, QPoint, QRect
+from qtpy.QtGui import QPainter, QPixmap, QCursor, QBrush, QColor, QPen, QPalette
 
 from . import inspection_utils
 
@@ -82,17 +82,17 @@ def getDroppableFilename(mime_data):
 class ImageCanvas(QWidget):
     """Widget to display a zoomable/scrollable image."""
     # User wants to zoom in/out by amount (mouse wheel delta)
-    zoomRequest = pyqtSignal(int)
+    zoomRequest = Signal(int)
     # User wants to scroll (Qt.Horizontal or Qt.Vertical, mouse wheel delta)
-    scrollRequest = pyqtSignal(int, int)
+    scrollRequest = Signal(int, int)
     # Mouse moved to this pixel position
-    mouseMoved = pyqtSignal(QPointF)
+    mouseMoved = Signal(QPointF)
     # User selected a rectangle (ImageCanvas must be created with rect_selectable=True)
-    rectSelected = pyqtSignal(tuple)
+    rectSelected = Signal(tuple)
     # Scaling factor of displayed image changed
-    imgScaleChanged = pyqtSignal(float)
+    imgScaleChanged = Signal(float)
     # File has been dropped onto canvas
-    filenameDropped = pyqtSignal(str)
+    filenameDropped = Signal(str)
 
     def __init__(
             self, parent=None, rect_selectable=False,
@@ -342,15 +342,15 @@ class ImageViewer(QScrollArea):
     """A widget to view image data (given as numpy ndarray)."""
 
     # Mouse moved to this pixel position
-    mouseMoved = pyqtSignal(QPointF)
+    mouseMoved = Signal(QPointF)
     # User selected a rectangle (ImageCanvas must be created with rect_selectable=True)
-    rectSelected = pyqtSignal(tuple)
+    rectSelected = Signal(tuple)
     # Scaling factor of displayed image changed
-    imgScaleChanged = pyqtSignal(float)
+    imgScaleChanged = Signal(float)
     # The view changed due to the user scrolling or zooming
-    viewChanged = pyqtSignal()
+    viewChanged = Signal()
     # File has been dropped onto canvas
-    filenameDropped = pyqtSignal(str)
+    filenameDropped = Signal(str)
 
     def __init__(self, parent=None, viewer_type=ImageViewerType.VIEW_ONLY, **kwargs):
         super(ImageViewer, self).__init__(parent)
@@ -375,7 +375,7 @@ class ImageViewer(QScrollArea):
         pixel location."""
         return self._canvas.pixelAtWidgetPos(self._canvas.mapFromGlobal(global_pos))
 
-    @pyqtSlot(tuple)
+    @Slot(tuple)
     def _emitRectSelected(self, rect):
         self.rectSelected.emit(rect)
 
@@ -458,7 +458,7 @@ class ImageViewer(QScrollArea):
         """Clears the list of linked viewers."""
         self._linked_viewers = list()
 
-    @pyqtSlot(int)
+    @Slot(int)
     def zoom(self, delta, notify_linked=True):
         """Scale the displayed image. Zoom in if delta > 0.
         Usually to be called with mouse wheel delta values, thus
@@ -487,7 +487,7 @@ class ImageViewer(QScrollArea):
                 delta_widget.y()*120/self.verticalScrollBar().singleStep(),
                 Qt.Vertical, notify_linked=True)
 
-    @pyqtSlot(int, int)
+    @Slot(int, int)
     def scrollRelative(self, delta, orientation, notify_linked=True):
         """Slot for scrollRequest signal of image canvas."""
         steps = -delta / 120
@@ -495,7 +495,7 @@ class ImageViewer(QScrollArea):
         value = bar.value() + bar.singleStep() * steps
         self.scrollAbsolute(value, orientation, notify_linked=notify_linked)
 
-    @pyqtSlot(int, int)
+    @Slot(int, int)
     def scrollAbsolute(self, value, orientation, notify_linked=True):
         """Sets the scrollbar to the given value."""
         # Cast to int to prevent TypeError encountered in qt versions available
@@ -561,7 +561,7 @@ class ImageViewer(QScrollArea):
 
 
 class RectSelectionDialog(QDialog):
-    rectSelected = pyqtSignal(object)
+    rectSelected = Signal(object)
 
     def __init__(self, parent=None):
         super(RectSelectionDialog, self).__init__()

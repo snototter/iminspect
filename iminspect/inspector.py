@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Inspect matrix/image data"""
+from typing import Optional, Tuple, Union
 
 # TODO Ideas and potential usability improvements:
 # * Load multiple files via drag & drop from file browser/external image viewer
@@ -55,22 +56,16 @@
 import numpy as np
 import os
 from enum import Enum
-from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
+from qtpy.QtWidgets import QMainWindow, QApplication, QWidget, \
     QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QFrame, QToolTip, \
     QShortcut, QMessageBox, QScrollArea, QSizePolicy
-from PyQt5.QtCore import Qt, QSize, QPoint, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QCursor, QFont, QKeySequence, QResizeEvent, QIcon
+from qtpy.QtCore import Qt, QSize, QPoint, Signal, Slot
+from qtpy.QtGui import QCursor, QFont, QKeySequence, QResizeEvent, QIcon
 from PIL import UnidentifiedImageError
 
-from vito import imutils
-from vito import colormaps
-from vito import imvis
-from vito import flowutils
+from vito import imutils, colormaps, imvis, flowutils
 
-from . import imgview
-from . import inputs
-from . import inspection_widgets
-from . import inspection_utils
+from . import imgview, inputs, inspection_widgets, inspection_utils
 
 
 class DataType(Enum):
@@ -215,10 +210,10 @@ class InspectionWidget(QWidget):
     # Emitted whenever the user changes the image scale (float).
     # The integer parameter will hold the "inspector_id" as set
     # upon __init__().
-    imgScaleChanged = pyqtSignal(int, float)
+    imgScaleChanged = Signal(int, float)
 
     # Notify observers that a new image has been loaded
-    fileOpened = pyqtSignal(int)
+    fileOpened = Signal(int)
 
     # Emitted whenever the user moves the mouse across the image
     # Yields the "inspector_id" and corresponding (image) pixel position
@@ -226,7 +221,7 @@ class InspectionWidget(QWidget):
     # If the position is None, this indicates that the user simply changed
     # the visualization mode (e.g. switching from grayscale to raw data)
     # and thus, the currently displayed tooltip (if any) must be updated.
-    showTooltipRequest = pyqtSignal(int, object)
+    showTooltipRequest = Signal(int, object)
 
     def __init__(
             self,
@@ -406,7 +401,7 @@ class InspectionWidget(QWidget):
     def scrollImage(self, delta, orientation):
         self._img_viewer.scroll(delta, orientation)
 
-    @pyqtSlot()
+    @Slot()
     def showFileSaveDialog(self):
         thumbnails = {
             inspection_widgets.SaveInspectionFileDialog.SAVE_VISUALIZATION: self._img_viewer.imagePixmap(),
@@ -417,7 +412,7 @@ class InspectionWidget(QWidget):
         self._save_file_dialog.finished.connect(self.__onSaveFinished)
         self._save_file_dialog.open()
 
-    @pyqtSlot()
+    @Slot()
     def showFileOpenDialog(self):
         # self._open_file_dialog = OpenInspectionFileDialog(self._data_type, parent=self)
         self._open_file_dialog = inspection_widgets.OpenInspectionFileDialog(
@@ -427,7 +422,7 @@ class InspectionWidget(QWidget):
         self._open_file_dialog.finished.connect(self.__onOpenFinished)
         self._open_file_dialog.open()
 
-    @pyqtSlot()
+    @Slot()
     def __onSaveFinished(self):
         res = self._save_file_dialog.getSelection()
         if res is None or any([r is None for r in res]):
@@ -482,7 +477,7 @@ class InspectionWidget(QWidget):
             msg.setWindowTitle('Error')
             msg.exec()
 
-    @pyqtSlot(str)
+    @Slot(str)
     def __openDroppedFilename(self, filename):
         if filename is None:
             return
@@ -505,7 +500,7 @@ class InspectionWidget(QWidget):
         self._open_file_dialog.finished.connect(self.__onOpenFinished)
         self._open_file_dialog.open()
 
-    @pyqtSlot()
+    @Slot()
     def __onOpenFinished(self):
         res = self._open_file_dialog.getSelection()
         if res is None or any([r is None for r in res]):
@@ -533,14 +528,14 @@ class InspectionWidget(QWidget):
             msg.setWindowTitle('Error')
             msg.exec()
 
-    @pyqtSlot()
+    @Slot()
     def showVisualizationChangeDialog(self):
         self._reload_visualization_dialog = inspection_widgets.ChangeDataTypeDialog(
             self._data_type, self._img_viewer.imagePixmap(), parent=self)
         self._reload_visualization_dialog.finished.connect(self.__onReloadDialogFinished)
         self._reload_visualization_dialog.open()
 
-    @pyqtSlot()
+    @Slot()
     def __onReloadDialogFinished(self):
         new_data_type = self._reload_visualization_dialog.getSelection()
         if new_data_type is None:
@@ -834,7 +829,7 @@ class InspectionWidget(QWidget):
         self._input_widget.setMaximumHeight(min_input_height)
         return super(InspectionWidget, self).resizeEvent(event)
 
-    @pyqtSlot()
+    @Slot()
     def __updateDisplay(self):
         # Select which layer to show:
         if self._is_single_channel:
@@ -982,6 +977,8 @@ class Inspector(QMainWindow):
             display_settings=display_settings,
             force_linked_viewers=force_linked_viewers,
             categorical_labels=categorical_labels)
+        if initial_window_size is not None:
+            self.resize(initial_window_size)
 
     def inspectData(
             self, data, data_type,
@@ -993,8 +990,10 @@ class Inspector(QMainWindow):
         See inspector.inspect() for documentation of the parameters.
         """
         if data is None:
-            #raise ValueError('Input data cannot be None')
-            data = inspection_utils.emptyInspectionImage()
+            sz = (640, 320)
+            if self._initial_window_size is not None:
+                sz = (self._initial_window_size.width(), self._initial_window_size.height())
+            data = inspection_utils.emptyInspectionImage(sz)
 
         if inspection_utils.isArrayLike(data):
             # Check if all images have the same width/height.
@@ -1079,14 +1078,16 @@ class Inspector(QMainWindow):
         """
         if settings is None:
             return
-        self.resize(settings['win-size'])
+        if 'win-size' in settings:
+            self.resize(settings['win-size'])
         # Note that restoring the position doesn't always work (issues with
         # windows that are placed partially outside the screen)
-        self.move(settings['win-pos'])
+        if 'win-pos' in settings:
+            self.move(settings['win-pos'])
         # Restore each viewer-specific display only if the number of viewers
         # stayed the same:
         num_inspectors = len(self._inspectors)
-        if num_inspectors == settings['num-inspectors']:
+        if 'num-inspectors' in settings and num_inspectors == settings['num-inspectors']:
             for idx in range(num_inspectors):
                 self._inspectors[idx].restoreDisplaySettings(settings['inspection-widgets'][idx])
         self.update()
@@ -1149,27 +1150,27 @@ class Inspector(QMainWindow):
         shortcut_toggle_tooltip = QShortcut(QKeySequence('Ctrl+T'), self)
         shortcut_toggle_tooltip.activated.connect(self.toggleTooltipDisplay)
 
-    @pyqtSlot(int)
+    @Slot(int)
     def scrollImages(self, delta, orientation):
         for insp in self._inspectors:
             insp.scrollImage(delta, orientation)
 
-    @pyqtSlot(int)
+    @Slot(int)
     def zoomImages(self, delta):
         for insp in self._inspectors:
             insp.zoomImage(delta)
 
-    @pyqtSlot()
+    @Slot()
     def scaleImagesOriginal(self):
         for insp in self._inspectors:
             insp.setImageScaleAbsolute(1.0)
 
-    @pyqtSlot()
+    @Slot()
     def scaleImagesFit(self):
         for insp in self._inspectors:
             insp.setImageScaleFit()
 
-    @pyqtSlot()
+    @Slot()
     def toggleTooltipDisplay(self):
         self._display_tooltip = not self._display_tooltip
         if self._display_tooltip:
@@ -1177,7 +1178,7 @@ class Inspector(QMainWindow):
         else:
             QToolTip.hideText()
 
-    @pyqtSlot(int)
+    @Slot(int)
     def __fileHasBeenOpened(self, inspector_id):
         self.__updateWindowTitle()
         # Update handles for linked inspectors (since image viewers may have
@@ -1233,7 +1234,7 @@ class Inspector(QMainWindow):
         s += '</table>'
         return s
 
-    @pyqtSlot(int, object)
+    @Slot(int, object)
     def showPixelValue(self, inspector_id, image_pos):
         """Invoked whenever the mouse position changed."""
         if image_pos is None:
@@ -1264,77 +1265,81 @@ class Inspector(QMainWindow):
                 return inspector_id
         return 0
 
-    @pyqtSlot()
+    @Slot()
     def __onOpenShortcut(self):
         inspector_id = self.__getActiveInspector()
         self._inspectors[inspector_id].showFileOpenDialog()
 
-    @pyqtSlot()
+    @Slot()
     def __onSaveShortcut(self):
         inspector_id = self.__getActiveInspector()
         self._inspectors[inspector_id].showFileSaveDialog()
     
-    @pyqtSlot()
+    @Slot()
     def __onReloadShortcut(self):
         inspector_id = self.__getActiveInspector()
         self._inspectors[inspector_id].showVisualizationChangeDialog()
 
 
 def inspect(
-        data,
-        data_type=None,
-        flip_channels=False,
-        label=None,
-        display_settings=None,
-        initial_window_size=(1280, 720),
-        max_num_widgets_per_row=3,
-        force_linked_viewers=False,
-        categorical_labels=None):
-    """Opens a GUI to visualize the given image data.
+        data: Union[np.ndarray, Tuple[np.ndarray, ...]],
+        data_type: DataType = None,
+        flip_channels: bool =False,
+        label: str = None,
+        display_settings: dict = None,
+        initial_window_size: Tuple[int, int] = None,
+        max_num_widgets_per_row: int = 3,
+        force_linked_viewers: bool = False,
+        categorical_labels: Union[dict, Tuple[dict, ...]] = None):
+    """
+    Opens a GUI to visualize the given image data.
 
-    data:           numpy ndarray to be visualized. If you want to inspect
-                    several images at once, data may be a tuple of numpy darray.
+    Args:
+      data: numpy ndarray to be visualized. If you want to inspect
+        several images at once, data may be a tuple of numpy darray.
 
-    data_type:      A DataType enumeration or None. If your input "data" is a
-                    tuple, data_type must be None or a tuple of DataType.
-                    Specifying this is necessary/useful if you want to inspect
-                    a label image: there's no (easy) way of automatically
-                    distinguish a monochrome image from a label image if your
-                    input "data" is uint8.
-                    If None, the "Inspector" will try to guess the data type from
-                    the input data.shape and data.dtype, see DataType.fromData().
+      data_type: A DataType enumeration or None. If your input "data" is a
+        tuple, data_type must be None or a tuple of DataType.
+        Specifying this is necessary/useful if you want to inspect
+        a label image: there's no (easy) way of automatically
+        distinguish a monochrome image from a label image if your
+        input "data" is uint8.
+        If None, the "Inspector" will try to guess the data type from
+        the input data.shape and data.dtype, see DataType.fromData().
 
-    flip_channels:  this qt window works with RGB images, so flip_channels must
-                    be set True if your data is BGR.
+      flip_channels: This qt window works with RGB images, so flip_channels must
+        be set True if your data is BGR.
 
-    label:          optionally specify a window title.
+      label: Optionally specify a window title.
 
-    display_settings: a dictionary of display settings in case you want to
-                    restore the previous settings. The current settings are
-                    returned by this function.
+      display_settings: A dictionary of display settings in case you want to
+        restore the previous settings. The current settings are
+        returned by this function.
 
-    initial_window_size: Resize the window.
+      initial_window_size: Optionally resize the window to the given (width,
+        height) window size.
 
-    max_num_widgets_per_row:  int, if the input "data" is a tuple/list of
-                    multiple images, the GUI will show a grid of
-                    floor(N/num_per_row) x num_per_row inspection widgets.
+      max_num_widgets_per_row: If the input "data" is a tuple/list of
+        multiple images, the GUI will show a grid of
+        floor(N/num_per_row) x num_per_row inspection widgets.
 
-    force_linked_viewers: bool, if you inspect multiple images at once ("data"
-                    is a tuple), the image viewers will only be linked (i.e.
-                    scroll/zoom simultaneously) if they have the same width
-                    and height. If your input sizes differ, you can set this
-                    flag to force linked viewers.
+      force_linked_viewers: If you inspect multiple images at once ("data"
+        is a tuple), the image viewers will only be linked (i.e.
+        scroll/zoom simultaneously) if they have the same width
+        and height. If your input sizes differ, you can set this
+        flag to force linked viewers.
 
-    categorical_labels: if data_type is CATEGORICAL, you can provide custom
-                    labels to be displayed on the colorbar (as a dictionary,
-                    mapping data values to label strings). If the input data
-                    is a tuple/list, this should be provided as:
-                    * a tuple/list of such dictionaries (if different for each
-                      inputs or not all inputs are categorical), or
-                    * a single dictionary if all inputs show the same labels.
+      categorical_labels: if data_type is CATEGORICAL, you can provide custom
+        labels to be displayed on the colorbar (as a dictionary,
+        mapping data values to label strings). If the input data
+        is a tuple/list, this should be provided as:
+        * a tuple/list of such dictionaries (if different for each
+          inputs or not all inputs are categorical), or
+        * a single dictionary if all inputs show the same labels.
 
-    returns: the window's exit code and a dictionary of currently used display
-             settings.
+    Returns:
+      The window's exit code and a dictionary of currently used display
+        settings.
     """
     if flip_channels:
         data = imutils.flip_layers(data)
@@ -1342,10 +1347,18 @@ def inspect(
     app_label = Inspector.makeWindowTitle(label, data, data_type)
 
     app = QApplication([app_label])
-    main_widget = Inspector(data, data_type=data_type,
+
+    if initial_window_size is None:
+        from qtpy.QtGui import QGuiApplication
+        initial_window_size = QGuiApplication.primaryScreen().availableGeometry().size() * 0.7
+    else:
+        initial_window_size = QSize(initial_window_size[0], initial_window_size[1])
+
+    main_widget = Inspector(
+        data=data,
+        data_type=data_type,
         display_settings=display_settings,
-        initial_window_size=None if initial_window_size is None else
-            QSize(initial_window_size[0], initial_window_size[1]),
+        initial_window_size=initial_window_size,
         window_title=label,
         max_num_widgets_per_row=max_num_widgets_per_row,
         force_linked_viewers=force_linked_viewers,

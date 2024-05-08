@@ -4,16 +4,12 @@
 
 import math
 import numpy as np
-from PyQt5.QtWidgets import QWidget, QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QToolButton
-from PyQt5.QtCore import Qt, QSize, QRect, QPoint, QPointF, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QPainter, QFont, QFontMetrics, QBrush, QColor, QIcon, QPen
-
+from qtpy.QtWidgets import QWidget, QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QToolButton
+from qtpy.QtCore import Qt, QSize, QRect, QPoint, QPointF, Signal, Slot
+from qtpy.QtGui import QPainter, QFont, QFontMetrics, QBrush, QColor, QIcon, QPen
 from vito import flowutils
 
-from . import imgview
-from . import inputs
-from . import inspection_utils
-from . import inspector
+from . import imgview, inputs, inspection_utils, inspector
 
 
 class ColorBar(QWidget):
@@ -275,7 +271,7 @@ class OpenInspectionFileDialog(QDialog):
         if self._filename is None:
             self._file_widget.open_dialog()
 
-    @pyqtSlot(object)
+    @Slot(object)
     def __fileSelected(self, filename):
         self._filename = filename
         if self._filename is not None and self._filename.lower().endswith('.flo'):
@@ -293,11 +289,11 @@ class OpenInspectionFileDialog(QDialog):
         if self._filename is None:
             self.__onCancel()
 
-    @pyqtSlot()
+    @Slot()
     def __onCancel(self):
         self.reject()
 
-    @pyqtSlot()
+    @Slot()
     def __onConfirm(self):
         type_tuple = self._type_widget.get_input()
         if type_tuple is None:
@@ -392,24 +388,24 @@ class SaveInspectionFileDialog(QDialog):
         super(SaveInspectionFileDialog, self).open()
         self._file_widget.open_dialog()
 
-    @pyqtSlot(object)
+    @Slot(object)
     def __updateThumbnail(self, selection):
         if selection is None or self._thumbnails is None:
             return
         self._thumbnail_viewer.setPixmap(self._thumbnails[selection[0]])
 
-    @pyqtSlot(object)
+    @Slot(object)
     def __fileSelected(self, filename):
         self._filename = filename
         self._btn_confirm.setEnabled(self._filename is not None)
         if self._filename is None:
             self.__onCancel()
 
-    @pyqtSlot()
+    @Slot()
     def __onCancel(self):
         self.reject()
 
-    @pyqtSlot()
+    @Slot()
     def __onConfirm(self):
         tpl = self._save_as_widget.get_input()
         if tpl is None:
@@ -484,11 +480,11 @@ class ChangeDataTypeDialog(QDialog):
     def open(self):
         super(ChangeDataTypeDialog, self).open()
 
-    @pyqtSlot()
+    @Slot()
     def __onCancel(self):
         self.reject()
 
-    @pyqtSlot()
+    @Slot()
     def __onConfirm(self):
         type_tuple = self._type_widget.get_input()
         if type_tuple is None:
@@ -508,9 +504,9 @@ class ToolbarFileIOWidget(QWidget):
     """
     Provides buttons to issue open/save file requests.
     """
-    fileOpenRequest = pyqtSignal()
-    fileSaveRequest = pyqtSignal()
-    visualizationChangeRequest = pyqtSignal()
+    fileOpenRequest = Signal()
+    fileSaveRequest = Signal()
+    visualizationChangeRequest = Signal()
 
     def __init__(self, vertical=False, icon_size=QSize(20, 20), parent=None):
         """
@@ -570,9 +566,9 @@ class ToolbarZoomWidget(QWidget):
     size) and "zoom-original" (show image at 100% zoom).
     """
     # Signal if zoom-best-fit is clicked
-    zoomBestFitRequest = pyqtSignal()
+    zoomBestFitRequest = Signal()
     # Signal if zoom-original is clicked
-    zoomOriginalSizeRequest = pyqtSignal()
+    zoomOriginalSizeRequest = Signal()
 
     def __init__(self, central_widget, parent=None):
         super(ToolbarZoomWidget, self).__init__(parent)
@@ -597,7 +593,7 @@ class ToolbarZoomWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
-    @pyqtSlot(float)
+    @Slot(float)
     def setScale(self, scale):
         if not self._show_label:
             return
