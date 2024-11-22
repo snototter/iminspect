@@ -100,6 +100,8 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
 
 
 ## Changelog
+* Upcoming
+  * Bug fix (ensure integral data type for Qt API calls)
 * `1.3.10`
   * Added utility scripts for [standalone installation](https://github.com/snototter/iminspect/blob/master/standalone/install-standalone-ubuntu-18.04.sh) (on Ubuntu).
   * Clarified standalone usage example.

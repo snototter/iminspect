@@ -71,11 +71,11 @@ class ColorBar(QWidget):
             # For binary/boolean data, we only need to show the two visualized colors.
             rgb = self._colormap[-1]
             brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
-            qp.fillRect(self._bar_padding, 0, self._bar_width, np.ceil(size.height()/2), brush)
+            qp.fillRect(self._bar_padding, 0, self._bar_width, int(np.ceil(size.height()/2)), brush)
             rgb = self._colormap[0]
             brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
-            qp.fillRect(self._bar_padding, np.floor(size.height()/2),
-                        self._bar_width, np.ceil(size.height()/2), brush)
+            qp.fillRect(self._bar_padding, int(np.floor(size.height()/2)),
+                        self._bar_width, int(np.ceil(size.height()/2)), brush)
             # Draw labels
             qp.drawText(QPoint(2*self._bar_padding + self._bar_width, int(size.height()*0.25)),
                         'True')
@@ -97,7 +97,8 @@ class ColorBar(QWidget):
             for i in range(num_categories):
                 rgb = self._colormap[cm_indices[num_categories-1-i]]
                 brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
-                qp.fillRect(self._bar_padding, np.floor(top), self._bar_width, np.ceil(step_height), brush)
+                qp.fillRect(self._bar_padding, int(np.floor(top)),
+                            self._bar_width, int(np.ceil(step_height)), brush)
                 # Compute label position (vertically centered, adjust if outside of canvas)
                 ly = max(self._font_size, min(np.floor(top + step_height/2 + self._font_size/2), size.height()))
                 label_pos.append(QPoint(2*self._bar_padding + self._bar_width, ly))
@@ -167,8 +168,8 @@ class ColorBar(QWidget):
             for i in range(num_gradient_steps):
                 rgb = self._colormap[cm_indices[num_gradient_steps-1-i]]
                 brush = QBrush(QColor(rgb[0], rgb[1], rgb[2]))
-                qp.fillRect(self._bar_padding, np.floor(top),
-                            self._bar_width, np.ceil(step_height), brush)
+                qp.fillRect(self._bar_padding, int(np.floor(top)),
+                            self._bar_width, int(np.ceil(step_height)), brush)
                 top += step_height
             # Draw labels
             fmt = inspection_utils.bestFormatFx(self._limits)
