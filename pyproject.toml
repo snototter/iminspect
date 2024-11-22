@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iminspect"
+dynamic = ["version"]
+
+description = "Qt-based GUI to visualize image-like data"
+readme = "README.md"
+
+license = {file = "LICENSE"}
+
+authors = [
+    { name = "snototter", email = "snototter@users.noreply.github.com" }
+]
+
+requires-python = ">=3.8"
+
+dependencies = [
+    'numpy',
+    'qimage2ndarray',
+    'qtpy',
+    'vito'
+]
+
+
+# For a list of valid classifiers, see https://pypi.org/classifiers/
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent"
+]
+
+
+[project.urls]
+homepage = "https://github.com/snototter/iminspect"
+
+[project.optional-dependencies]
+pyqt5 = ["PyQt5"]
+pyqt6 = ["PyQt6"]
+pyside2 = ["PySide2"]
+pyside6 = ["PySide6"]
+
+[tool.setuptools]
+packages = ["iminspect"]
+include-package-data = true
+
+#[tool.setuptools.packages.find]
+#where = ["iminspect"]
+
+[tool.setuptools.dynamic]
+version = {attr = "iminspect.__version__"}
+
+#[tool.setuptools.package-data]
+#iminspect = ["iminspect_assets/*.txt"]

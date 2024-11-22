@@ -12,6 +12,22 @@ why running a script from this package via (path/to/script.py) won't work.
 
 
 from . import inspector
+import argparse
+from pathlib import Path
+from vito import imutils
+
 
 if __name__ == '__main__':
-    inspector.inspect(None)
+    parser = argparse.ArgumentParser(description='Inspect an images or multiple images')
+    parser.add_argument(
+        'image', nargs='*', type=Path, help='Image file(s) to inspect', default=None)
+    args = parser.parse_args()
+    
+    if (args.image is None) or (len(args.image) == 0):
+        to_inspect = None
+    elif len(args.image) == 1:
+        to_inspect = imutils.imread(args.image[0])
+    else:
+        to_inspect = [imutils.imread(img) for img in args.image]
+    
+    inspector.inspect(data=to_inspect)

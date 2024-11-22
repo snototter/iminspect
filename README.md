@@ -18,6 +18,29 @@ The goal is to enable quick and easy visualization/analysis of:
 * optical flow data.
 
 
+## Qt Backend
+`iminspect` requires a [Qt](https://www.qt.io/) backend. In Python, you need to
+either install [PyQt](https://www.riverbankcomputing.com/software/pyqt/download)
+or [PySide](https://doc.qt.io/qtforpython-6/).  
+The default installation **will not install** any of these backends, you have
+to select one on your own.
+
+Optionally, you can install `iminspect` with a specific backend. Currently,
+`pyqt5`, `pyqt6`, `pyside2`, and `pyside6` are supported:
+```bash
+# PyQt5
+python3 -m pip install "iminspect[pyqt5]"
+
+# OR PyQt6
+python3 -m pip install "iminspect[pyqt6]"
+
+# OR PySide2
+python3 -m pip install "iminspect[pyside2]"
+
+# OR PySide6
+python3 -m pip install "iminspect[pyside6]"
+```
+
 ## Example usage (within a Python script):
 ```python
 from iminspect.inspector import inspect, DataType
@@ -69,13 +92,6 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
 ![Screenshot inputs demo](https://github.com/snototter/iminspect/blob/master/screenshots/input-widgets.jpg?raw=true "Common input widgets")
 
 
-## Dependencies
-* `numpy`, for matrix manipulation
-* `PyQt5`, for the graphical user interface - if there's a `PyQt5`-related install error, you need to upgrade `pip` via `pip install --upgrade pip`.
-* `qimage2ndarray`, to convert numpy ndarrays to Qt images
-* `vito`, a lightweight vision tool package
-
-
 ## UI Documentation
 * To inspect a data point/pixel, just move the mouse above it.
 * Zooming:
@@ -95,13 +111,24 @@ The `iminspect.inputs` subpackage provides common user input widgets, e.g. to se
   * `Ctrl+Q` and `Ctrl+W` close the inspection GUI.
   * `Ctrl+O` shows a dialog to open another file.
   * `Ctrl+S` shows a dialog to save either the (raw) input or its current visualization.
-  * `Ctrl+T` toggle tool tip display when moving the mouse over the data.
+  * `Ctrl+T` toggles tool tip display when moving the mouse over the data.
   * `Ctrl+R` reloads the current data such that the user can select a different visualization/data type.
 
 
 ## Changelog
 * Upcoming
   * Bug fix (ensure integral data type for Qt API calls)
+* `1.4.1`
+  * Adds the missing asset.
+* `1.4.0`
+  * Updates the build process, switching to [pyproject.toml](https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/)
+  * Users can choose which Qt/PySide version should be used via the package extras.
+* `1.3.11`
+  * Prevents a `TypeError` that occurs for some mouse wheel zoom actions on recent OS/Qt versions.
+  * Github workflow updates
+  * Remove Python EOL versions
+  * Fix OS & Python setup for CI test runner
+  * Update PyPI action to use [Trusted Publishing](https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/) / [OpenID Connect (OIDC)](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-pypi)
 * `1.3.10`
   * Added utility scripts for [standalone installation](https://github.com/snototter/iminspect/blob/master/standalone/install-standalone-ubuntu-18.04.sh) (on Ubuntu).
   * Clarified standalone usage example.

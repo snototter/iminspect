@@ -3,12 +3,10 @@
 import os
 import math
 import qimage2ndarray
-
-# from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, \
-#     QHBoxLayout, QVBoxLayout, QGridLayout, QPushButton, QLabel, QFrame, QToolTip, \
-#     QShortcut, QDialog, QMessageBox, QToolButton, QScrollArea
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPainter, QFont, QColor, QPixmap, QImage, QPen
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QPainter, QFont, QColor, QPixmap, QImage, QPen, QIcon
+from typing import Tuple
+from pathlib import Path
 
 
 # Utils to format a data point (depending on the range)
@@ -88,19 +86,21 @@ def pixmapFromNumPy(img_np):
     return QPixmap.fromImage(qimage)
 
 
-def emptyInspectionImage():
+def emptyInspectionImage(img_size: Tuple[int, int] = (640, 320)):
     """Returns a dummy image to be displayed if the inspector is
     called with invalid (None) data."""
-    img_width = 640
-    img_height = 320
+    img_width, img_height = img_size
     qimage = QImage(img_width, img_height, QImage.Format_RGB32)
     qimage.fill(Qt.white)
     qp = QPainter()
     qp.begin(qimage)
     qp.setRenderHint(QPainter.HighQualityAntialiasing)
+    sz = min(100, min(img_width, img_height))
+    logo = QIcon(str(Path(__file__).absolute().parent / 'iminspect_assets' / 'iminspect.svg')).pixmap(sz, sz)
+    qp.drawPixmap((img_width - sz) // 2, 20, logo)
     qp.setPen(QPen(QColor(200, 0, 0)))
     font = QFont()
-    font.setPointSize(20)
+    font.setPointSize(24)
     font.setBold(True)
     font.setFamily('Helvetica')
     qp.setFont(font)
